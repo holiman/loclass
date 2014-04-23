@@ -64,6 +64,23 @@ void pushBit( BitstreamOut* stream, bool bit)
 	stream->position++;
 	stream->numbits++;
 }
+
+/**
+ * @brief Pushes the lower six bits onto the stream
+ * as b0 b1 b2 b3 b4 b5 b6
+ * @param stream
+ * @param bits
+ */
+void push6bits( BitstreamOut* stream, uint8_t bits)
+{
+	pushBit(stream, bits & 0x20);
+	pushBit(stream, bits & 0x10);
+	pushBit(stream, bits & 0x08);
+	pushBit(stream, bits & 0x04);
+	pushBit(stream, bits & 0x02);
+	pushBit(stream, bits & 0x01);
+}
+
 /**
  * @brief bitsLeft
  * @param stream
@@ -82,6 +99,40 @@ int numBits(BitstreamOut *stream)
 {
 	return stream->numbits;
 }
+
+void num_to_bytes(uint64_t n, size_t len, uint8_t* dest)
+{
+	while (len--) {
+		dest[len] = (uint8_t) n;
+		n >>= 8;
+	}
+}
+
+uint64_t bytes_to_num(uint8_t* src, size_t len)
+{
+	uint64_t num = 0;
+	while (len--)
+	{
+		num = (num << 8) | (*src);
+		src++;
+	}
+	return num;
+}
+uint8_t reversebytes(uint8_t b) {
+	b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
+	b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
+	b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
+   return b;
+}
+void reverse_arraybytes(uint8_t* arr, size_t len)
+{
+	u_int8_t i;
+	for( i =0; i< len ; i++)
+	{
+		arr[i] = reversebytes(arr[i]);
+	}
+}
+
 
 //-----------------------------
 // Code for testing below

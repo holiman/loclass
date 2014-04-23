@@ -24,6 +24,11 @@
 #include <stdio.h>
 #include <cipherutils.h>
 
+#include <cipher.h>
+#include <ikeys.h>
+
+
+
 
 int main(void)
 {
@@ -33,6 +38,7 @@ int main(void)
 	printf("This is free software, and you are welcome to use, abuse and repackage, please keep the credits\n\n");
 	testCipherUtils();
 	testMAC();
+	doKeyTests();
 	return 0;
 }
 
