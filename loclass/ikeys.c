@@ -90,12 +90,8 @@ void pushbackSixBitByte(uint64_t *c, uint8_t z, int n)
 	masked <<= 42-6*n;
 	eraser <<= 42-6*n;
 	eraser = ~eraser;
-	//printf("Pushing back z%d (0x%02x)\n", n, z);
-	//printf("c = 0x%"PRIX64"\n", *c );
-	//printf("m = 0x%"PRIX64"\n", masked );
 	(*c) &= eraser;
 	(*c) |= masked;
-	//printf("c = 0x%"PRIX64"\n", *c );
 
 }
 /**
@@ -129,6 +125,7 @@ uint64_t ck(int i, int j, uint64_t z)
 			uint8_t val = getSixBitByte(z,c);
 			if(c == i)
 			{
+				printf("oops");
 				pushbackSixBitByte(&newz, j, c);
 			}else
 			{
@@ -247,7 +244,7 @@ void printbegin()
 
 void printState(char* desc, uint64_t c)
 {
-	return 0;
+	//return 0;
 	printf("%s : ", desc);
 	uint8_t x = 	(c & 0xFF00000000000000 ) >> 56;
 	uint8_t y = 	(c & 0x00FF000000000000 ) >> 48;
@@ -580,53 +577,130 @@ int testTemporaryKeys(uint8_t key[8])
 	}
 	return error;
 }
-int doArticleTest()
+/**
+  Some testcase inputs:
+ {csn}: d6ad3ca619659e6b
+
+		   | x| y|z0|z1|z2|z3|z4|z5|z6|z7|
+ original:  d6 ad 2b 39 19 19 19 18 0a 0f
+   x|y|z':  d6 ad 2b 3a 1b 1c 19 19 0c 12
+   x|y|z^:  d6 ad 2b 3a 1b 1c 19 00 0c 12
+   p|y|z^:  1e ad 2b 3a 1b 1c 19 00 0c 12
+   p|y|z~:  1e ad 19 2c 3b 1c 1d 00 0c 12
+		k:        cd 58 8a c8 3a ff 19 db
+
+ hash0: cd588ac83aff19db
+
+{csn}: 0102030405060708
+
+		  | x| y|z0|z1|z2|z3|z4|z5|z6|z7|
+original:  01 02 08 1c 20 01 05 10 30 00
+  x|y|z':  01 02 08 1d 22 04 05 11 32 03
+  x|y|z^:  01 02 08 1d 22 04 05 11 32 03
+  p|y|z^:  e8 02 08 1d 22 04 05 11 32 03
+  p|y|z~:  e8 02 05 11 32 09 03 1e 23 05
+	   k:        0b dd 65 12 07 3c 46 0a
+
+hash0: 0bdd6512073c460a
+
+{csn}: 1020304050607080
+
+		   | x| y|z0|z1|z2|z3|z4|z5|z6|z7|
+ original:  10 20 00 02 07 18 10 01 04 0c
+   x|y|z':  10 20 00 03 09 1b 10 02 06 0f
+   x|y|z^:  10 20 00 03 09 1b 10 02 06 0f
+   p|y|z^:  4b 20 00 03 09 1b 10 02 06 0f
+   p|y|z~:  4b 20 01 04 10 0a 02 06 1c 0f
+		k:        02 08 21 14 05 f3 38 1f
+
+ hash0: 0208211405f3381f
+
+{csn}: 1122334455667788
+
+		   | x| y|z0|z1|z2|z3|z4|z5|z6|z7|
+ original:  11 22 08 1e 27 19 15 11 34 0c
+   x|y|z':  11 22 08 1f 29 1c 15 12 36 0f
+   x|y|z^:  11 22 08 1f 29 1c 15 12 36 0f
+   p|y|z^:  b2 22 08 1f 29 1c 15 12 36 0f
+   p|y|z~:  b2 22 15 09 12 36 20 2a 0f 1d
+		k:        2b ee 25 6d 40 ac 1f 3a
+
+ hash0: 2bee256d40ac1f3a
+
+{csn}: abcdabcdabcdabcd
+ hash0: a91c9ec66f7da592
+
+ {csn}: bcdabcdabcdabcda
+ hash0: 79ca5796a474e19b
+
+ {csn}: cdabcdabcdabcdab
+ hash0: a8901b9f7ec76da4
+
+ {csn}: dabcdabcdabcdabc
+ hash0: 357aa8e0979a5b8d
+**/
+void printarr2(char * name, uint8_t* arr, int len)
+{
+	int i ;
+	printf("%s :", name);
+	for(i =0 ;  i< len ; i++)
+	{
+		printf("%02x",*(arr+i));
+	}
+	printf("\n");
+}
+uint64_t testByteArray(uint64_t crypted_id, uint8_t z[8], char* expected)
+{
+	uint8_t result[8] = {0};
+
+	pushbackSixBitByte(&crypted_id, z[0], 0);
+	pushbackSixBitByte(&crypted_id, z[1], 1);
+	pushbackSixBitByte(&crypted_id, z[2], 2);
+	pushbackSixBitByte(&crypted_id, z[3], 3);
+	pushbackSixBitByte(&crypted_id, z[4], 4);
+	pushbackSixBitByte(&crypted_id, z[5], 5);
+	pushbackSixBitByte(&crypted_id, z[6], 6);
+	pushbackSixBitByte(&crypted_id, z[7], 7);
+	hash0(crypted_id, result);
+	printarr2("hash0   ", result, 8);
+	printf(	  "expected :%s\n" , expected);
+	return crypted_id;
+}
+
+int doTestsWithKnownInputs()
 {
 	uint8_t key[8] =	{0x11,0x22,0x33,0x44,0x55,0x66,0x77,0x88};
 
 	uint8_t empty[8]={0};
-	uint8_t result[8] = {0};
 
-	uint8_t uid[8] = {0xbb,0xbb,0xaa,0xaa,0xbb,0xbb,0xee,0xee};
-	des_setkey_enc( &ctx_enc, key);
-	des_setkey_dec( &ctx_dec, key);
-	des_crypt_ecb(&ctx_enc,uid,result);
-
-	printarr("key", key,8);
-	printarr("csn", uid, 8);
-	printarr("des", result,8);
 
 	printf("Testing with anohter hash input\n");
+	testByteArray(0xd6ad000000000000,(uint8_t[8]) {0x2b,0x39,0x19,0x19,0x19,0x18,0x0a,0x0f},"cd588ac83aff19db");
+	testByteArray(0x0102000000000000,(uint8_t[8]) {0x08,0x1c,0x20,0x01,0x05,0x10,0x30,0x00},"0bdd6512073c460a");
+	testByteArray(0x1020000000000000,(uint8_t[8]) {0x00,0x02,0x07,0x18,0x10,0x01,0x04,0x0c},"0208211405f3381f");
+	testByteArray(0x1122000000000000,(uint8_t[8]) {0x08,0x1e,0x27,0x19,0x15,0x11,0x34,0x0c},"2bee256d40ac1f3a");
+	//TODO FIX THESE
+	testByteArray(0xabcd000000000000,(uint8_t[8]) {0xab,0xcd,0xab,0xcd,0xab,0xcd,0xab,0xcd},"a91c9ec66f7da592");
+	testByteArray(0xcdab000000000000,(uint8_t[8]) {0xbc,0xda,0xbc,0xda,0xbc,0xda,0xbc,0xda},"79ca5796a474e19b");
+	testByteArray(0xdabc000000000000,(uint8_t[8]) {0xcd,0xab,0xcd,0xab,0xcd,0xab,0xcd,0xab},"a8901b9f7ec76da4");
+	testByteArray(0xdabc000000000000,(uint8_t[8]) {0xda,0xbc,0xda,0xbc,0xda,0xbc,0xda,0xbc},"357aa8e0979a5b8d");
 
-
-	uint64_t crypted_id = 0xd6ad000000000000;
-
-	pushbackSixBitByte(&crypted_id, 0x2b, 0);
-	pushbackSixBitByte(&crypted_id, 0x39, 1);
-	pushbackSixBitByte(&crypted_id, 0x19, 2);
-	pushbackSixBitByte(&crypted_id, 0x19, 3);
-	pushbackSixBitByte(&crypted_id, 0x19, 4);
-	pushbackSixBitByte(&crypted_id, 0x18, 5);
-	pushbackSixBitByte(&crypted_id, 0x0a, 6);
-	pushbackSixBitByte(&crypted_id, 0x0f, 7);
 
 
 	//printf("Temp key 0x%"PRIX64"\n", crypted_id);
 
-	hash0(crypted_id, result);
-	printarr("hash0__", result, 8);
-	printarr("correct", (uint8_t[8]){0xcd,0x58,0x8a,0xc8,0x3a,0xff,0x19,0xdb},8);
+	//printarr("correct", (uint8_t[8]){0xcd,0x58,0x8a,0xc8,0x3a,0xff,0x19,0xdb},8);
 }
 
 int doKeyTests()
 {
-	uint8_t key[] =	{INSERT_MASTER_KEY_HERE}
+	uint8_t key[] =	//
 	des_setkey_enc( &ctx_enc, key);
 	des_setkey_dec( &ctx_dec, key);
 	// Test hashing functions
-	testTemporaryKeys(key);
+	//testTemporaryKeys(key);
 
-	doArticleTest();
+	doTestsWithKnownInputs();
 	return 0;
 }
 /**
