@@ -14,15 +14,15 @@ OBJDIR = ./obj/
 #LDFLAGS = $(COMMON_FLAGS)
 CFLAGS = -std=c99 -I. -g -O4
 #CFLAGS = -std=c99 -I. -I../include -I../common -I/opt/local/include -I../liblua -Wall $(COMMON_FLAGS) -g -O4 
-CORESRCS = cipher.c  cipherutils.c  des.c  des.c  ikeys.c  main.c  test.c
+CORESRCS = cipher.c  cipherutils.c  des.c  des.c  ikeys.c  main.c
 COREOBJS = $(CORESRCS:%.c=$(OBJDIR)/%.o)
 
 RM = rm -f
-BINS = test
-CLEAN = test $(CMDOBJS) $(OBJDIR)/*.o *.o
+BINS = iclazz
+CLEAN = iclazz $(CMDOBJS) $(OBJDIR)/*.o *.o
 
-	
-iclazz: $(OBJDIR)/test.o $(COREOBJS)
+
+iclazz: $(COREOBJS)
 	$(CXX) $(CXXFLAGS) $^ $(LDLIBS) -o $@
 
 $(OBJDIR)/%.o: %.c

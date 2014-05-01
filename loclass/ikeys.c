@@ -125,6 +125,7 @@ uint64_t swapZvalues(uint64_t c)
 	pushbackSixBitByte(&newz, getSixBitByte(c,6),1);
 	pushbackSixBitByte(&newz, getSixBitByte(c,7),0);
 	newz |= (c & 0xFFFF000000000000);
+	return newz;
 }
 
 /**
@@ -374,8 +375,6 @@ void hash0(uint64_t c, uint8_t k[8])
 	}
 	//printf("zerocounter=%d (should be 4)\n",zerocounter);
 	//printf("permute fin, y:0x%02x, x: 0x%02x\n", y, x);
-
-	return k;
 }
 
 void diversifyKey(uint8_t csn[8], uint8_t key[8], uint8_t div_key[8])
@@ -634,25 +633,35 @@ void printarr2(char * name, uint8_t* arr, int len)
 	}
 	printf("\n");
 }
+void print64bits(char*name, uint64_t val)
+{
+	printf("%s%08x%08x\n",name,(uint32_t) (val >> 32) ,(uint32_t) (val & 0xFFFFFFFF));
+}
+
 uint64_t testCryptedCSN(uint64_t crypted_csn, uint64_t expected)
 {
 	int retval = 0;
 	uint8_t result[8] = {0};
 	if(debug_print) printf("debug_print %d", debug_print);
-	if(debug_print) printf("    {csn}      %08x%08x\n", crypted_csn >> 32,crypted_csn);
+	if(debug_print) print64bits("    {csn}      ", crypted_csn );
 
 	uint64_t crypted_csn_swapped = swapZvalues(crypted_csn);
 
-	if(debug_print) printf("    {csn-revz} %08x%08x\n", crypted_csn_swapped >> 32,crypted_csn_swapped);
+	if(debug_print) print64bits("    {csn-revz} ", crypted_csn_swapped);
 
 	hash0(crypted_csn, result);
 	uint64_t resultbyte = bytes_to_num(result,8 );
-	if(debug_print) printf("    hash0      %08x%08x" , resultbyte >> 32, resultbyte );
+	if(debug_print) print64bits("    hash0      " , resultbyte );
 
 	if(resultbyte != expected )
 	{
-		if(debug_print) printf("\n[+] FAIL       %08x%08x expected\n\n" , expected >> 32, expected );
+
+		if(debug_print) {
+			printf("\n[+] FAIL!");
+			print64bits("    expected       " ,  expected );
+		}
 		retval = 1;
+
 	}else
 	{
 		if(debug_print) printf(" [OK]\n");
@@ -665,14 +674,14 @@ int testDES2(uint64_t csn, uint64_t expected)
 	uint8_t result[8] = {0};
 	uint8_t input[8] = {0};
 
-	printf("   csn %08x%08x\n", csn >> 32,csn);
+	print64bits("   csn ", csn);
 	num_to_bytes(csn, 8,input);
 
 	des_crypt_ecb(&ctx_enc,input, result);
 
 	uint64_t crypt_csn = bytes_to_num(result, 8);
-	printf("   {csn}    %08x%08x\n", crypt_csn >> 32,crypt_csn);
-	printf("   expected %08x%08x\n", expected >> 32,expected);
+	print64bits("   {csn}    ", crypt_csn );
+	print64bits("   expected ", expected );
 
 	if( expected == crypt_csn )
 	{
@@ -718,6 +727,7 @@ int doTestsWithKnownInputs()
 	{
 		printf("[+] Hashing seems to work (9 testcases)\n" );
 	}
+	return errors;
 }
 
 int readKeyFile(uint8_t key[8])
@@ -836,7 +846,7 @@ void modifyKey_put_parity_last(uint8_t * key, uint8_t* output)
 	output[7] = paritybits;
 	printf("Parity byte: %02x\n", paritybits);
 }
-/**
+
  * @brief Modifies a key with parity bits last, so that it is formed with parity
  *		bits inside each byte
  * @param key
