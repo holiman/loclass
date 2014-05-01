@@ -31,6 +31,21 @@
 uint8_t keytable[] = { 0,0,0,0,0,0,0,0};
 
 /**
+* Definition 1 (Cipher state). A cipher state of iClass s is an element of F 40/2
+* consisting of the following four components:
+* 	1. the left register l = (l 0 . . . l 7 ) ∈ F 8/2 ;
+* 	2. the right register r = (r 0 . . . r 7 ) ∈ F 8/2 ;
+* 	3. the top register t = (t 0 . . . t 15 ) ∈ F 16/2 .
+* 	4. the bottom register b = (b 0 . . . b 7 ) ∈ F 8/2 .
+**/
+typedef struct {
+	uint8_t l;
+	uint8_t r;
+	uint8_t b;
+	uint16_t t;
+} State;
+
+/**
 *	Definition 2. The feedback function for the top register T : F 16/2 → F 2
 *	is defined as
 *	T (x 0 x 1 . . . . . . x 15 ) = x 0 ⊕ x 1 ⊕ x 5 ⊕ x 7 ⊕ x 10 ⊕ x 11 ⊕ x 14 ⊕ x 15 .
@@ -188,23 +203,24 @@ void MAC(uint8_t* k, BitstreamIn input, BitstreamOut out)
 	BitstreamIn input_32_zeroes = {zeroes_32,sizeof(zeroes_32)*8,0};
 	State initState = suc(k,init(k),&input);
 	output(k,initState,&input_32_zeroes,&out);
-
 }
 
-
-void printarr(char * name, uint8_t* arr, int len)
+void doMAC(uint8_t cc_nr[12],uint8_t div_key[8], uint8_t mac[4])
 {
-	int i ;
-	printf("uint8_t %s[] = {", name);
-	for(i =0 ;  i< len ; i++)
-	{
-		printf("0x%02x,",*(arr+i));
-	}
-	printf("};\n");
+	// Reversed "on-the-wire" data
+	reverse_arraybytes(cc_nr,sizeof(cc_nr));
+	BitstreamIn bitstream = {cc_nr,sizeof(cc_nr) * 8,0};
+	uint8_t dest []= {0,0,0,0,0,0,0,0};
+	BitstreamOut out = { dest, sizeof(dest)*8, 0 };
+	MAC(div_key,bitstream, out);
+	//The output MAC must also be reversed
+	reverse_arraybytes(mac, sizeof(mac));
+	return;
 }
 
 int testMAC()
 {
+	printf("[+] Testing MAC calculation...\n");
 
 	//From the "dismantling.IClass" paper:
 	uint8_t cc_nr[] = {0xFE,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0,0,0,0};
@@ -222,15 +238,15 @@ int testMAC()
 	//The output MAC must also be reversed
 	reverse_arraybytes(dest, sizeof(dest));
 
-	if(false && memcmp(dest, correct_MAC,4) == 0)
+	if(memcmp(dest, correct_MAC,4) == 0)
 	{
-		printf("MAC calculation OK!\n");
+		printf("[+] MAC calculation OK!\n");
 
 	}else
 	{
-		printf("MAC calculation failed\n");
-		printarr("Calculated_MAC", dest, 4);
-		printarr("Correct_MAC   ", correct_MAC, 4);
+		printf("[+] FAILED: MAC calculation failed:\n");
+		printarr("    Calculated_MAC", dest, 4);
+		printarr("    Correct_MAC   ", correct_MAC, 4);
 		return 1;
 	}
 	return 0;

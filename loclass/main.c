@@ -27,18 +27,15 @@
 #include <cipher.h>
 #include <ikeys.h>
 
-
-
-
 int main(void)
 {
 
-	printf("IClass Cipher version 1.0, Copyright (C) 2014 Martin Holst Swende\n");
+	printf("IClass Cipher version 1.0, Copyright (C) 2014 Martin Holst Swende\n\n");
 	printf("Comes with ABSOLUTELY NO WARRANTY\n");
 	printf("This is free software, and you are welcome to use, abuse and repackage, please keep the credits\n\n");
 	testCipherUtils();
 	testMAC();
-	doKeyTests();
+	doKeyTests(0);
 	return 0;
 }
 

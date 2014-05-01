@@ -6,6 +6,10 @@
  * Flavio D. Garcia, Gerhard de Koning Gans, Roel Verdult and
  * Milosch Meriac in the paper "Dismantling IClass".
  *
+ * This is a reference implementation of iclass key diversification. I'm sure it can be
+ * optimized heavily. It is written for ease of understanding and correctness, please take it
+ * and tweak it and make a super fast version instead, using this for testing and verification.
+
  * Copyright (C) 2014 Martin Holst Swende
  *
  * This is free software: you can redistribute it and/or modify
@@ -21,6 +25,8 @@
  * along with IClassCipher.  If not, see <http://www.gnu.org/licenses/>.
  ****************************************************************************/
 /**
+
+
 From "Dismantling iclass":
 	This section describes in detail the built-in key diversification algorithm of iClass.
 	Besides the obvious purpose of deriving a card key from a master key, this
@@ -57,7 +63,7 @@ uint8_t pi[35] = {0x0F,0x17,0x1B,0x1D,0x1E,0x27,0x2B,0x2D,0x2E,0x33,0x35,0x39,0x
 static des_context ctx_enc = {DES_ENCRYPT,{0}};
 static des_context ctx_dec = {DES_DECRYPT,{0}};
 
-static bool debug_print = false;
+static int debug_print = 0;
 
 /**
  * @brief The key diversification algorithm uses 6-bit bytes.
@@ -73,7 +79,6 @@ static bool debug_print = false;
 uint8_t getSixBitByte(uint64_t c, int n)
 {
 	return (c >> (42-6*n)) & 0x3F;
-	//return (c >> n*6) & 0x3f;
 }
 
 /**
@@ -101,6 +106,13 @@ void pushbackSixBitByte(uint64_t *c, uint8_t z, int n)
 	(*c) |= masked;
 
 }
+/**
+ * @brief Swaps the z-values.
+ * If the input value has format XYZ0Z1...Z7, the output will have the format
+ * XYZ7Z6...Z0 instead
+ * @param c
+ * @return
+ */
 uint64_t swapZvalues(uint64_t c)
 {
 	uint64_t newz = 0;
@@ -112,7 +124,6 @@ uint64_t swapZvalues(uint64_t c)
 	pushbackSixBitByte(&newz, getSixBitByte(c,5),2);
 	pushbackSixBitByte(&newz, getSixBitByte(c,6),1);
 	pushbackSixBitByte(&newz, getSixBitByte(c,7),0);
-
 	newz |= (c & 0xFFFF000000000000);
 }
 
@@ -121,8 +132,6 @@ uint64_t swapZvalues(uint64_t c)
 */
 uint64_t ck(int i, int j, uint64_t z)
 {
-
-//	printf("ck( i=%d, j=%d), zi=[%d],zj=[%d] \n",i,j,getSixBitByte(z,i),getSixBitByte(z,j) );
 
 	if(i == 1 && j == -1)
 	{
@@ -137,17 +146,15 @@ uint64_t ck(int i, int j, uint64_t z)
 
 	if(getSixBitByte(z,i) == getSixBitByte(z,j))
 	{
-		// TODO, I dont know what they mean here in the paper
+
 		//ck(i, j − 1, z [0] . . . z [i] ← j . . . z [3] )
 		uint64_t newz = 0;
 		int c;
-		//printf("z[i]=z[i] (0x%02x), i=%d, j=%d\n",getSixBitByte(z,i),i,j );
 		for(c = 0; c < 4 ;c++)
 		{
 			uint8_t val = getSixBitByte(z,c);
 			if(c == i)
 			{
-				printf("oops\n");
 				pushbackSixBitByte(&newz, j, c);
 			}else
 			{
@@ -159,7 +166,6 @@ uint64_t ck(int i, int j, uint64_t z)
 	{
 		return ck(i,j-1,z);
 	}
-
 }
 /**
 
@@ -187,6 +193,9 @@ uint64_t check(uint64_t z)
 
 	// ck(3, 2, z [4] . . . z [7] )
 	uint64_t ck2 = ck(3,2, z << 24);
+
+	//The ck function will place the values
+	// in the middle of z.
 	ck1 &= 0x00000000FFFFFF000000;
 	ck2 &= 0x00000000FFFFFF000000;
 
@@ -215,62 +224,18 @@ void permute(BitstreamIn *p_in, uint64_t z,int l,int r, BitstreamOut* out)
 		permute(p_in,z,l,r+1,out);
 	}
 }
-void testPermute()
-{
-
-	uint64_t x = 0;
-	pushbackSixBitByte(&x,0x00,0);
-	pushbackSixBitByte(&x,0x01,1);
-	pushbackSixBitByte(&x,0x02,2);
-	pushbackSixBitByte(&x,0x03,3);
-	pushbackSixBitByte(&x,0x04,4);
-	pushbackSixBitByte(&x,0x05,5);
-	pushbackSixBitByte(&x,0x06,6);
-	pushbackSixBitByte(&x,0x07,7);
-
-	uint8_t mres[8] = { getSixBitByte(x, 0),
-						getSixBitByte(x, 1),
-						getSixBitByte(x, 2),
-						getSixBitByte(x, 3),
-						getSixBitByte(x, 4),
-						getSixBitByte(x, 5),
-						getSixBitByte(x, 6),
-						getSixBitByte(x, 7)};
-	printarr("input_perm", mres,8);
-
-	uint8_t p = ~pi[0];
-	BitstreamIn p_in = { &p, 8,0 };
-	uint8_t outbuffer[] = {0,0,0,0,0,0,0,0};
-	BitstreamOut out = {outbuffer,0,0};
-
-	permute(&p_in, x,0,4, &out);
-
-	uint64_t permuted = bytes_to_num(outbuffer,8);
-	//printf("zTilde 0x%"PRIX64"\n", zTilde);
-	permuted >>= 16;
-
-	uint8_t res[8] = { getSixBitByte(permuted, 0),
-						getSixBitByte(permuted, 1),
-						getSixBitByte(permuted, 2),
-						getSixBitByte(permuted, 3),
-						getSixBitByte(permuted, 4),
-						getSixBitByte(permuted, 5),
-						getSixBitByte(permuted, 6),
-						getSixBitByte(permuted, 7)};
-	printarr("permuted", res, 8);
-}
 void printbegin()
 {
-	if(! debug_print)
-		return 0;
+	if(debug_print <2)
+		return ;
 
 	printf("          | x| y|z0|z1|z2|z3|z4|z5|z6|z7|\n");
 }
 
 void printState(char* desc, uint64_t c)
 {
-	if(! debug_print)
-		return 0;
+	if(debug_print < 2)
+		return ;
 
 	printf("%s : ", desc);
 	uint8_t x = 	(c & 0xFF00000000000000 ) >> 56;
@@ -295,8 +260,10 @@ void printState(char* desc, uint64_t c)
  * @param k this is where the diversified key is put (should be 8 bytes)
  * @return
  */
-uint8_t* hash0(uint64_t c, uint8_t *k)
+void hash0(uint64_t c, uint8_t k[8])
 {
+	c = swapZvalues(c);
+
 	printbegin();
 	printState("origin",c);
 	//These 64 bits are divided as c = x, y, z [0] , . . . , z [7]
@@ -336,7 +303,7 @@ uint8_t* hash0(uint64_t c, uint8_t *k)
 		p = ~p;
 	}
 
-	if(debug_print) printf("p:%02x\n", p);
+	if(debug_print >= 2) printf("p:%02x\n", p);
 
 	BitstreamIn p_in = { &p, 8,0 };
 	uint8_t outbuffer[] = {0,0,0,0,0,0,0,0};
@@ -411,20 +378,73 @@ uint8_t* hash0(uint64_t c, uint8_t *k)
 	return k;
 }
 
-void reorder(uint8_t arr[8])
+void diversifyKey(uint8_t csn[8], uint8_t key[8], uint8_t div_key[8])
 {
-	uint8_t tmp[4] = {arr[3],arr[2],arr[1], arr[0]};
-	arr[0] = arr[7];
-	arr[1] = arr[6];
-	arr[2] = arr[5];
-	arr[3] = arr[4];
-	arr[4] = tmp[0];//arr[3];
-	arr[5] = tmp[1];//arr[2];
-	arr[6] = tmp[2];//arr[3];
-	arr[7] = tmp[3];//arr[1]
+	// Prepare the DES key
+	des_setkey_enc( &ctx_enc, key);
+
+	uint8_t crypted_csn[8] = {0};
+
+	// Calculate DES(CSN, KEY)
+	des_crypt_ecb(&ctx_enc,csn, crypted_csn);
+
+	//Calculate HASH0(DES))
+	uint64_t crypt_csn = bytes_to_num(crypted_csn, 8);
+	hash0(crypt_csn,div_key);
 }
 
-extern void printarr(char * name, uint8_t* arr, int len);
+
+// ---------------------------------------------------------------------------------
+// ALL CODE BELOW THIS LINE IS PURELY TESTING
+// ---------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// TEST CODE BELOW
+// ----------------------------------------------------------------------------
+
+void testPermute()
+{
+
+	uint64_t x = 0;
+	pushbackSixBitByte(&x,0x00,0);
+	pushbackSixBitByte(&x,0x01,1);
+	pushbackSixBitByte(&x,0x02,2);
+	pushbackSixBitByte(&x,0x03,3);
+	pushbackSixBitByte(&x,0x04,4);
+	pushbackSixBitByte(&x,0x05,5);
+	pushbackSixBitByte(&x,0x06,6);
+	pushbackSixBitByte(&x,0x07,7);
+
+	uint8_t mres[8] = { getSixBitByte(x, 0),
+						getSixBitByte(x, 1),
+						getSixBitByte(x, 2),
+						getSixBitByte(x, 3),
+						getSixBitByte(x, 4),
+						getSixBitByte(x, 5),
+						getSixBitByte(x, 6),
+						getSixBitByte(x, 7)};
+	printarr("input_perm", mres,8);
+
+	uint8_t p = ~pi[0];
+	BitstreamIn p_in = { &p, 8,0 };
+	uint8_t outbuffer[] = {0,0,0,0,0,0,0,0};
+	BitstreamOut out = {outbuffer,0,0};
+
+	permute(&p_in, x,0,4, &out);
+
+	uint64_t permuted = bytes_to_num(outbuffer,8);
+	//printf("zTilde 0x%"PRIX64"\n", zTilde);
+	permuted >>= 16;
+
+	uint8_t res[8] = { getSixBitByte(permuted, 0),
+						getSixBitByte(permuted, 1),
+						getSixBitByte(permuted, 2),
+						getSixBitByte(permuted, 3),
+						getSixBitByte(permuted, 4),
+						getSixBitByte(permuted, 5),
+						getSixBitByte(permuted, 6),
+						getSixBitByte(permuted, 7)};
+	printarr("permuted", res, 8);
+}
 
 //These testcases are
 //{ UID , TEMP_KEY, DIV_KEY} using the specific key
@@ -438,10 +458,11 @@ typedef struct
 
 int testDES(Testcase testcase, des_context ctx_enc, des_context ctx_dec)
 {
-	uint8_t result[8] = {0};
+	uint8_t des_encrypted_csn[8] = {0};
 	uint8_t decrypted[8] = {0};
-	int retval = des_crypt_ecb(&ctx_enc,testcase.uid,result);
-	retval |= des_crypt_ecb(&ctx_dec,result,decrypted);
+	uint8_t div_key[8] = {0};
+	int retval = des_crypt_ecb(&ctx_enc,testcase.uid,des_encrypted_csn);
+	retval |= des_crypt_ecb(&ctx_dec,des_encrypted_csn,decrypted);
 
 	if(memcmp(testcase.uid,decrypted,8) != 0)
 	{
@@ -452,31 +473,60 @@ int testDES(Testcase testcase, des_context ctx_enc, des_context ctx_dec)
 		retval = 1;
 	}
 
-	if(memcmp(result,testcase.t_key,8) != 0)
+	if(memcmp(des_encrypted_csn,testcase.t_key,8) != 0)
 	{
 		//Encryption fail
 		printf("Encryption != Expected result\n");
-		printarr("Output", result, 8);
+		printarr("Output", des_encrypted_csn, 8);
 		printarr("Expected", testcase.t_key, 8);
 		retval = 1;
 	}
-	uint64_t crypted_id = bytes_to_num(result,8);
-	//printf("Temp key 0x%"PRIX64"\n", crypted_id);
+	uint64_t crypted_csn = bytes_to_num(des_encrypted_csn,8);
+	hash0(crypted_csn, div_key);
 
-	//uint64_t crypted_id_revz = reversebytes(crypted_id);
-	hash0(crypted_id, result);
-	//reorder(testcase.div_key);
-
-	if(memcmp(result, testcase.div_key ,8) != 0)
+	if(memcmp(div_key, testcase.div_key ,8) != 0)
 	{
-		//Encryption fail
-		//printf("Div key != expected result\n");
-		printarr("Output__", result, 8);
+		//Key diversification fail
+		printf("Div key != expected result\n");
+		printarr("  csn   ", testcase.uid,8);
+		printarr("{csn}   ", des_encrypted_csn,8);
+		printarr("hash0   ", div_key, 8);
 		printarr("Expected", testcase.div_key, 8);
 		retval = 1;
 
 	}
 	return retval;
+}
+bool des_getParityBitFromKey(uint8_t key)
+{//The top 7 bits is used
+	bool parity = ((key & 0x80) >> 7)
+			^ ((key & 0x40) >> 6) ^ ((key & 0x20) >> 5)
+			^ ((key & 0x10) >> 4) ^ ((key & 0x08) >> 3)
+			^ ((key & 0x04) >> 2) ^ ((key & 0x02) >> 1);
+	return !parity;
+}
+
+
+void des_checkParity(uint8_t* key)
+{
+	int i;
+	int fails =0;
+	for(i =0 ; i < 8 ; i++)
+	{
+		bool parity = des_getParityBitFromKey(key[i]);
+		if(parity != (key[i] & 0x1))
+		{
+			fails++;
+			printf("[+] parity1 fail, byte %d [%02x] was %d, should be %d\n",i,key[i],(key[i] & 0x1),parity);
+		}
+	}
+	if(fails)
+	{
+		printf("[+] parity fails: %d\n", fails);
+	}else
+	{
+		printf("[+] Key syntax is with parity bits inside each byte\n");
+	}
 }
 
 Testcase testcases[] ={
@@ -550,125 +600,30 @@ Testcase testcases[] ={
 	{{0},{0},{0}}
 };
 
-bool des_getParityBitFromKey(uint8_t key)
-{//The top 7 bits is used
-	bool parity = ((key & 0x80) >> 7)
-			^ ((key & 0x40) >> 6) ^ ((key & 0x20) >> 5)
-			^ ((key & 0x10) >> 4) ^ ((key & 0x08) >> 3)
-			^ ((key & 0x04) >> 2) ^ ((key & 0x02) >> 1);
-	return !parity;
-}
-void des_checkParity(uint8_t* key)
-{
-	int i;
-	int fails =0;
-	for(i =0 ; i < 8 ; i++)
-	{
-		bool parity = des_getParityBitFromKey(key[i]);
-		if(parity != (key[i] & 0x1))
-		{
-			fails++;
-			printf("parity1 fail, byte %d [%02x] was %d, should be %d\n",i,key[i],(key[i] & 0x1),parity);
-		}
-	}
-	if(fails)
-	{
-		printf("parity fails: %d\n", fails);
-	}else
-	{
-		printf("Key syntax is with parity bits inside each byte\n");
-	}
-}
 
-int testTemporaryKeys(uint8_t key[8])
+int testKeyDiversificationWithMasterkeyTestcases()
 {
 
-	printarr("original_key", key, 8);
-	des_checkParity(key);
 	int error = 0;
 	int i;
-	// init context
-	//des_context ctx_enc = {DES_ENCRYPT,{0}};
-	//des_context ctx_dec = {DES_DECRYPT,{0}};
-	des_setkey_enc( &ctx_enc, key);
-	des_setkey_dec( &ctx_dec, key);
 
 	uint8_t empty[8]={0};
-	printf("Testing encryption/decryption\n");
+	printf("[+} Testing encryption/decryption\n");
+
 	for (i = 0;  memcmp(testcases+i,empty,8) ; i++) {
 		error += testDES(testcases[i],ctx_enc, ctx_dec);
 	}
 	if(error)
 	{
-		printf("%d errors occurred (%d testcases)\n", error, i);
+		printf("[+] %d errors occurred (%d testcases)\n", error, i);
 	}else
 	{
-		printf("Hashing seems to work (%d testcases)\n", i);
+		printf("[+] Hashing seems to work (%d testcases)\n", i);
 	}
 	return error;
 }
-/**
-  Some testcase inputs:
- {csn}: d6ad3ca619659e6b
 
-		   | x| y|z0|z1|z2|z3|z4|z5|z6|z7|
- original:  d6 ad 2b 39 19 19 19 18 0a 0f
-   x|y|z':  d6 ad 2b 3a 1b 1c 19 19 0c 12
-   x|y|z^:  d6 ad 2b 3a 1b 1c 19 00 0c 12
-   p|y|z^:  1e ad 2b 3a 1b 1c 19 00 0c 12
-   p|y|z~:  1e ad 19 2c 3b 1c 1d 00 0c 12
-		k:        cd 58 8a c8 3a ff 19 db
 
- hash0: cd588ac83aff19db
-
-{csn}: 0102030405060708
-
-		  | x| y|z0|z1|z2|z3|z4|z5|z6|z7|
-original:  01 02 08 1c 20 01 05 10 30 00
-  x|y|z':  01 02 08 1d 22 04 05 11 32 03
-  x|y|z^:  01 02 08 1d 22 04 05 11 32 03
-  p|y|z^:  e8 02 08 1d 22 04 05 11 32 03
-  p|y|z~:  e8 02 05 11 32 09 03 1e 23 05
-	   k:        0b dd 65 12 07 3c 46 0a
-
-hash0: 0bdd6512073c460a
-
-{csn}: 1020304050607080
-
-		   | x| y|z0|z1|z2|z3|z4|z5|z6|z7|
- original:  10 20 00 02 07 18 10 01 04 0c
-   x|y|z':  10 20 00 03 09 1b 10 02 06 0f
-   x|y|z^:  10 20 00 03 09 1b 10 02 06 0f
-   p|y|z^:  4b 20 00 03 09 1b 10 02 06 0f
-   p|y|z~:  4b 20 01 04 10 0a 02 06 1c 0f
-		k:        02 08 21 14 05 f3 38 1f
-
- hash0: 0208211405f3381f
-
-{csn}: 1122334455667788
-
-		   | x| y|z0|z1|z2|z3|z4|z5|z6|z7|
- original:  11 22 08 1e 27 19 15 11 34 0c
-   x|y|z':  11 22 08 1f 29 1c 15 12 36 0f
-   x|y|z^:  11 22 08 1f 29 1c 15 12 36 0f
-   p|y|z^:  b2 22 08 1f 29 1c 15 12 36 0f
-   p|y|z~:  b2 22 15 09 12 36 20 2a 0f 1d
-		k:        2b ee 25 6d 40 ac 1f 3a
-
- hash0: 2bee256d40ac1f3a
-
-{csn}: abcdabcdabcdabcd
- hash0: a91c9ec66f7da592
-
- {csn}: bcdabcdabcdabcda
- hash0: 79ca5796a474e19b
-
- {csn}: cdabcdabcdabcdab
- hash0: a8901b9f7ec76da4
-
- {csn}: dabcdabcdabcdabc
- hash0: 357aa8e0979a5b8d
-**/
 void printarr2(char * name, uint8_t* arr, int len)
 {
 	int i ;
@@ -681,78 +636,147 @@ void printarr2(char * name, uint8_t* arr, int len)
 }
 uint64_t testCryptedCSN(uint64_t crypted_csn, uint64_t expected)
 {
-	debug_print = true;
+	int retval = 0;
 	uint8_t result[8] = {0};
-	if(debug_print) printf("{csn} %08x%08x\n", crypted_csn >> 32,crypted_csn);
+	if(debug_print) printf("debug_print %d", debug_print);
+	if(debug_print) printf("    {csn}      %08x%08x\n", crypted_csn >> 32,crypted_csn);
 
-	crypted_csn = swapZvalues(crypted_csn);
+	uint64_t crypted_csn_swapped = swapZvalues(crypted_csn);
 
-	if(debug_print) printf("{csn-revz} %08x%08x\n", crypted_csn >> 32,crypted_csn);
+	if(debug_print) printf("    {csn-revz} %08x%08x\n", crypted_csn_swapped >> 32,crypted_csn_swapped);
 
 	hash0(crypted_csn, result);
+	uint64_t resultbyte = bytes_to_num(result,8 );
+	if(debug_print) printf("    hash0      %08x%08x" , resultbyte >> 32, resultbyte );
 
-	if(debug_print)
+	if(resultbyte != expected )
 	{
-		printarr2("hash0   ", result, 8);
-		printf(	  "expected :%08x%08x\n\n" , expected >> 32, expected );
+		if(debug_print) printf("\n[+] FAIL       %08x%08x expected\n\n" , expected >> 32, expected );
+		retval = 1;
+	}else
+	{
+		if(debug_print) printf(" [OK]\n");
 	}
-	return crypted_csn;
+	return retval;
 }
 
+int testDES2(uint64_t csn, uint64_t expected)
+{
+	uint8_t result[8] = {0};
+	uint8_t input[8] = {0};
+
+	printf("   csn %08x%08x\n", csn >> 32,csn);
+	num_to_bytes(csn, 8,input);
+
+	des_crypt_ecb(&ctx_enc,input, result);
+
+	uint64_t crypt_csn = bytes_to_num(result, 8);
+	printf("   {csn}    %08x%08x\n", crypt_csn >> 32,crypt_csn);
+	printf("   expected %08x%08x\n", expected >> 32,expected);
+
+	if( expected == crypt_csn )
+	{
+		printf("[+] OK\n");
+		return 0;
+	}else
+	{
+		return 1;
+	}
+}
+
+/**
+ * These testcases come from http://www.proxmark.org/forum/viewtopic.php?pid=10977#p10977
+ * @brief doTestsWithKnownInputs
+ * @return
+ */
 int doTestsWithKnownInputs()
 {
-	//uint8_t key[8] =	{0x11,0x22,0x33,0x44,0x55,0x66,0x77,0x88};
 
-	printf("Testing with another hash input\n");
+	// KSel from http://www.proxmark.org/forum/viewtopic.php?pid=10977#p10977
+	int errors = 0;
+	printf("[+] Testing DES encryption\n");
+	uint8_t key[8] = {0x6c,0x8d,0x44,0xf9,0x2a,0x2d,0x01,0xbf};
+	des_setkey_enc( &ctx_enc, key);
+	testDES2(0xbbbbaaaabbbbeeee,0xd6ad3ca619659e6b);
 
-	testCryptedCSN(0x0102030405060708,0x0bdd6512073c460a);
-	testCryptedCSN(0x1020304050607080,0x0208211405f3381f);
-	testCryptedCSN(0x1122334455667788,0x2bee256d40ac1f3a);
-	testCryptedCSN(0xabcdabcdabcdabcd,0xa91c9ec66f7da592);
-	testCryptedCSN(0xbcdabcdabcdabcda,0x79ca5796a474e19b);
-	testCryptedCSN(0xcdabcdabcdabcdab,0xa8901b9f7ec76da4);
-	testCryptedCSN(0xdabcdabcdabcdabc,0x357aa8e0979a5b8d);
-	testCryptedCSN(0x21ba6565071f9299,0x34e80f88d5cf39ea);
-	testCryptedCSN(0x14e2adfc5bb7e134,0x6ac90c6508bd9ea3);
+	printf("[+] Testing hashing algorithm\n");
+
+	errors += testCryptedCSN(0x0102030405060708,0x0bdd6512073c460a);
+	errors += testCryptedCSN(0x1020304050607080,0x0208211405f3381f);
+	errors += testCryptedCSN(0x1122334455667788,0x2bee256d40ac1f3a);
+	errors += testCryptedCSN(0xabcdabcdabcdabcd,0xa91c9ec66f7da592);
+	errors += testCryptedCSN(0xbcdabcdabcdabcda,0x79ca5796a474e19b);
+	errors += testCryptedCSN(0xcdabcdabcdabcdab,0xa8901b9f7ec76da4);
+	errors += testCryptedCSN(0xdabcdabcdabcdabc,0x357aa8e0979a5b8d);
+	errors += testCryptedCSN(0x21ba6565071f9299,0x34e80f88d5cf39ea);
+	errors += testCryptedCSN(0x14e2adfc5bb7e134,0x6ac90c6508bd9ea3);
+
+	if(errors)
+	{
+		printf("[+] %d errors occurred (9 testcases)\n", errors);
+	}else
+	{
+		printf("[+] Hashing seems to work (9 testcases)\n" );
+	}
+}
+
+int readKeyFile(uint8_t key[8])
+{
+
+	FILE *f;
+
+	f = fopen("iclass_key.bin", "rb");
+	if (f)
+	{
+		if(fread(key, sizeof(key), 1, f) == 1) return 0;
+	}
+	return 1;
 
 }
 
-int doKeyTests()
-{
-	uint8_t key[] =	;
-//
-	des_setkey_enc( &ctx_enc, key);
-	des_setkey_dec( &ctx_dec, key);
-	// Test hashing functions
-	testTemporaryKeys(key);
 
+int doKeyTests(uint8_t debuglevel)
+{
+	debug_print = debuglevel;
+	printf("[+] Testing key diversification ...\n");
+
+	printf("[+] Checking if the master key is present (iclass_key.bin)...\n");
+	uint8_t key[8] = {0};
+	if(readKeyFile(key))
+	{
+		printf("[+] Master key not present, will not be able to do all testcases\n");
+	}else
+	{
+
+		//Test if it's the right key...
+		uint8_t i;
+		uint8_t j = 0;
+		for(i =0 ; i < sizeof(key) ; i++)
+			j += key[i];
+
+		if(j != 185)
+		{
+			printf("[+] A key was loaded, but it does not seem to be the correct one. Aborting these tests\n");
+		}else
+		{
+			printf("[+] Key present\n");
+
+			printf("[+] Checking key parity...\n");
+			des_checkParity(key);
+			des_setkey_enc( &ctx_enc, key);
+			des_setkey_dec( &ctx_dec, key);
+			// Test hashing functions
+			printf("[+] The following tests require the correct 8-byte master key\n");
+			testKeyDiversificationWithMasterkeyTestcases();
+		}
+	}
+	printf("[+] Testing key diversification with non-sensitive keys...\n");
 	doTestsWithKnownInputs();
 	return 0;
 }
-/**
-void modifyKey(uint8_t * key, uint8_t* output)
-{
-	uint8_t paritybits = 0;
-	bool parity =0;
-	BitstreamOut out = { output, 0,0};
-	unsigned int bbyte, bbit;
-	for(bbyte=0; bbyte <8 ; bbyte++ )
-	{
-		for(bbit =0 ; bbit< 7 ; bbit++)
-		{
-			bool bit = *(key+bbyte) & (1 << (7-bbit));
-			pushBit(&out,bit);
-			parity ^= bit;
-		}
-		bool paritybit = *(key+bbyte) & 1;
-		paritybits |= paritybit << (7-bbyte);
-		parity = 0;
 
-	}
-	output[7] = paritybits;
-	printf("Parity byte: %02x\n", paritybits);
-}
 
+/*
 void checkParity2(uint8_t* key)
 {
 
@@ -789,6 +813,62 @@ void checkParity2(uint8_t* key)
 	{
 		printf("Key syntax is with parity bits grouped in the last byte!\n");
 	}
+}
+void modifyKey_put_parity_last(uint8_t * key, uint8_t* output)
+{
+	uint8_t paritybits = 0;
+	bool parity =0;
+	BitstreamOut out = { output, 0,0};
+	unsigned int bbyte, bbit;
+	for(bbyte=0; bbyte <8 ; bbyte++ )
+	{
+		for(bbit =0 ; bbit< 7 ; bbit++)
+		{
+			bool bit = *(key+bbyte) & (1 << (7-bbit));
+			pushBit(&out,bit);
+			parity ^= bit;
+		}
+		bool paritybit = *(key+bbyte) & 1;
+		paritybits |= paritybit << (7-bbyte);
+		parity = 0;
+
+	}
+	output[7] = paritybits;
+	printf("Parity byte: %02x\n", paritybits);
+}
+/**
+ * @brief Modifies a key with parity bits last, so that it is formed with parity
+ *		bits inside each byte
+ * @param key
+ * @param output
+
+void modifyKey_put_parity_allover(uint8_t * key, uint8_t* output)
+{
+	bool parity =0;
+	BitstreamOut out = { output, 0,0};
+	BitstreamIn in = {key, 0,0};
+	unsigned int bbyte, bbit;
+	for(bbit =0 ; bbit < 56 ; bbit++)
+	{
+
+		if( bbit > 0 && bbit % 7 == 0)
+		{
+			pushBit(&out,!parity);
+			parity = 0;
+		}
+		bool bit = headBit(&in);
+		pushBit(&out,bit );
+		parity ^= bit;
+
+	}
+	pushBit(&out, !parity);
+
+
+	if(	des_key_check_key_parity(output))
+	{
+		printf("modifyKey_put_parity_allover fail, DES key invalid parity!");
+	}
+
 }
 
 */

@@ -53,5 +53,6 @@ void num_to_bytes(uint64_t n, size_t len, uint8_t* dest);
 uint64_t bytes_to_num(uint8_t* src, size_t len);
 uint8_t reversebytes(uint8_t b);
 void reverse_arraybytes(uint8_t* arr, size_t len);
+void printarr(char * name, uint8_t* arr, int len);
 
 #endif // CIPHERUTILS_H

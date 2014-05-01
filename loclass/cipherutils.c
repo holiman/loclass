@@ -132,6 +132,17 @@ void reverse_arraybytes(uint8_t* arr, size_t len)
 		arr[i] = reversebytes(arr[i]);
 	}
 }
+void printarr(char * name, uint8_t* arr, int len)
+{
+	int i ;
+	printf("uint8_t %s[] = {", name);
+	for(i =0 ;  i< len ; i++)
+	{
+		printf("0x%02x,",*(arr+i));
+	}
+	printf("};\n");
+}
+
 
 
 //-----------------------------
@@ -154,14 +165,14 @@ int testBitStream()
 	}
 	if(memcmp(input, output, sizeof(input)) == 0)
 	{
-		printf("Bitstream test 1 ok\n");
+		printf("    Bitstream test 1 ok\n");
 	}else
 	{
-		printf("Bitstream test 1 failed\n");
+		printf("    Bitstream test 1 failed\n");
 		uint8_t i;
 		for(i = 0 ; i < sizeof(input) ; i++)
 		{
-			printf("IN %02x, OUT %02x\n", input[i], output[i]);
+			printf("    IN %02x, OUT %02x\n", input[i], output[i]);
 		}
 		return 1;
 	}
@@ -188,14 +199,14 @@ int testReversedBitstream()
 	}
 	if(memcmp(input, output, sizeof(input)) == 0)
 	{
-		printf("Bitstream test 2 ok\n");
+		printf("    Bitstream test 2 ok\n");
 	}else
 	{
-		printf("Bitstream test 2 failed\n");
+		printf("    Bitstream test 2 failed\n");
 		uint8_t i;
 		for(i = 0 ; i < sizeof(input) ; i++)
 		{
-			printf("IN %02x, MIDDLE: %02x, OUT %02x\n", input[i],reverse[i], output[i]);
+			printf("    IN %02x, MIDDLE: %02x, OUT %02x\n", input[i],reverse[i], output[i]);
 		}
 		return 1;
 	}
@@ -205,6 +216,7 @@ int testReversedBitstream()
 
 int testCipherUtils(void)
 {
+	printf("[+] Testing some internals...\n");
 	int retval = 0;
 	retval |= testBitStream();
 	retval |= testReversedBitstream();
