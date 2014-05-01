@@ -1,6 +1,6 @@
 # IClass cipher
 
-This is a reconstructon of the cipher engine used in iClass, and RFID techology.
+This is a reconstructon of the cipher engine used in iClass, an RFID techology developed by HID Global.
  
 The implementation is based on the work performed by Flavio D. Garcia, Gerhard de Koning Gans, Roel Verdult and  Milosch Meriac in the paper "Dismantling IClass".
 
