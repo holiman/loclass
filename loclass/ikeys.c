@@ -57,6 +57,8 @@ uint8_t pi[35] = {0x0F,0x17,0x1B,0x1D,0x1E,0x27,0x2B,0x2D,0x2E,0x33,0x35,0x39,0x
 static des_context ctx_enc = {DES_ENCRYPT,{0}};
 static des_context ctx_dec = {DES_DECRYPT,{0}};
 
+static bool debug_print = false;
+
 /**
  * @brief The key diversification algorithm uses 6-bit bytes.
  * This implementation uses 64 bit uint to pack seven of them into one
@@ -71,6 +73,7 @@ static des_context ctx_dec = {DES_DECRYPT,{0}};
 uint8_t getSixBitByte(uint64_t c, int n)
 {
 	return (c >> (42-6*n)) & 0x3F;
+	//return (c >> n*6) & 0x3f;
 }
 
 /**
@@ -89,11 +92,30 @@ void pushbackSixBitByte(uint64_t *c, uint8_t z, int n)
 	uint64_t eraser = 0x3F;
 	masked <<= 42-6*n;
 	eraser <<= 42-6*n;
+
+	//masked <<= 6*n;
+	//eraser <<= 6*n;
+
 	eraser = ~eraser;
 	(*c) &= eraser;
 	(*c) |= masked;
 
 }
+uint64_t swapZvalues(uint64_t c)
+{
+	uint64_t newz = 0;
+	pushbackSixBitByte(&newz, getSixBitByte(c,0),7);
+	pushbackSixBitByte(&newz, getSixBitByte(c,1),6);
+	pushbackSixBitByte(&newz, getSixBitByte(c,2),5);
+	pushbackSixBitByte(&newz, getSixBitByte(c,3),4);
+	pushbackSixBitByte(&newz, getSixBitByte(c,4),3);
+	pushbackSixBitByte(&newz, getSixBitByte(c,5),2);
+	pushbackSixBitByte(&newz, getSixBitByte(c,6),1);
+	pushbackSixBitByte(&newz, getSixBitByte(c,7),0);
+
+	newz |= (c & 0xFFFF000000000000);
+}
+
 /**
 * @return 4 six-bit bytes chunked into a uint64_t,as 00..00a0a1a2a3
 */
@@ -125,7 +147,7 @@ uint64_t ck(int i, int j, uint64_t z)
 			uint8_t val = getSixBitByte(z,c);
 			if(c == i)
 			{
-				printf("oops");
+				printf("oops\n");
 				pushbackSixBitByte(&newz, j, c);
 			}else
 			{
@@ -239,12 +261,17 @@ void testPermute()
 }
 void printbegin()
 {
+	if(! debug_print)
+		return 0;
+
 	printf("          | x| y|z0|z1|z2|z3|z4|z5|z6|z7|\n");
 }
 
 void printState(char* desc, uint64_t c)
 {
-	//return 0;
+	if(! debug_print)
+		return 0;
+
 	printf("%s : ", desc);
 	uint8_t x = 	(c & 0xFF00000000000000 ) >> 56;
 	uint8_t y = 	(c & 0x00FF000000000000 ) >> 48;
@@ -285,6 +312,7 @@ uint8_t* hash0(uint64_t c, uint8_t *k)
 	for(n = 0;  n < 4 ; n++)
 	{
 		zn = getSixBitByte(c,n);
+
 		zn4 = getSixBitByte(c,n+4);
 
 		_zn = (zn % (63-n)) + n;
@@ -295,19 +323,21 @@ uint8_t* hash0(uint64_t c, uint8_t *k)
 		pushbackSixBitByte(&zP, _zn4,n+4);
 
 	}
-	printState("x|y|z'",zP);
+	printState("0|0|z'",zP);
 
 	uint64_t zCaret = check(zP);
-	printState("x|y|z^",zP);
+	printState("0|0|z^",zP);
 
 
 	uint8_t p = pi[x % 35];
-	//if(x & 0x80 )//Check if x0 is 1
+
 	if(x & 1) //Check if x7 is 1
 	{
 		p = ~p;
 	}
-	printf("p:%02x\n", p);
+
+	if(debug_print) printf("p:%02x\n", p);
+
 	BitstreamIn p_in = { &p, 8,0 };
 	uint8_t outbuffer[] = {0,0,0,0,0,0,0,0};
 	BitstreamOut out = {outbuffer,0,0};
@@ -430,10 +460,10 @@ int testDES(Testcase testcase, des_context ctx_enc, des_context ctx_dec)
 		printarr("Expected", testcase.t_key, 8);
 		retval = 1;
 	}
-	//reverse_arraybytes(result, 8);
 	uint64_t crypted_id = bytes_to_num(result,8);
 	//printf("Temp key 0x%"PRIX64"\n", crypted_id);
 
+	//uint64_t crypted_id_revz = reversebytes(crypted_id);
 	hash0(crypted_id, result);
 	//reorder(testcase.div_key);
 
@@ -649,56 +679,52 @@ void printarr2(char * name, uint8_t* arr, int len)
 	}
 	printf("\n");
 }
-uint64_t testByteArray(uint64_t crypted_id, uint8_t z[8], char* expected)
+uint64_t testCryptedCSN(uint64_t crypted_csn, uint64_t expected)
 {
+	debug_print = true;
 	uint8_t result[8] = {0};
+	if(debug_print) printf("{csn} %08x%08x\n", crypted_csn >> 32,crypted_csn);
 
-	pushbackSixBitByte(&crypted_id, z[0], 0);
-	pushbackSixBitByte(&crypted_id, z[1], 1);
-	pushbackSixBitByte(&crypted_id, z[2], 2);
-	pushbackSixBitByte(&crypted_id, z[3], 3);
-	pushbackSixBitByte(&crypted_id, z[4], 4);
-	pushbackSixBitByte(&crypted_id, z[5], 5);
-	pushbackSixBitByte(&crypted_id, z[6], 6);
-	pushbackSixBitByte(&crypted_id, z[7], 7);
-	hash0(crypted_id, result);
-	printarr2("hash0   ", result, 8);
-	printf(	  "expected :%s\n" , expected);
-	return crypted_id;
+	crypted_csn = swapZvalues(crypted_csn);
+
+	if(debug_print) printf("{csn-revz} %08x%08x\n", crypted_csn >> 32,crypted_csn);
+
+	hash0(crypted_csn, result);
+
+	if(debug_print)
+	{
+		printarr2("hash0   ", result, 8);
+		printf(	  "expected :%08x%08x\n\n" , expected >> 32, expected );
+	}
+	return crypted_csn;
 }
 
 int doTestsWithKnownInputs()
 {
-	uint8_t key[8] =	{0x11,0x22,0x33,0x44,0x55,0x66,0x77,0x88};
+	//uint8_t key[8] =	{0x11,0x22,0x33,0x44,0x55,0x66,0x77,0x88};
 
-	uint8_t empty[8]={0};
+	printf("Testing with another hash input\n");
 
+	testCryptedCSN(0x0102030405060708,0x0bdd6512073c460a);
+	testCryptedCSN(0x1020304050607080,0x0208211405f3381f);
+	testCryptedCSN(0x1122334455667788,0x2bee256d40ac1f3a);
+	testCryptedCSN(0xabcdabcdabcdabcd,0xa91c9ec66f7da592);
+	testCryptedCSN(0xbcdabcdabcdabcda,0x79ca5796a474e19b);
+	testCryptedCSN(0xcdabcdabcdabcdab,0xa8901b9f7ec76da4);
+	testCryptedCSN(0xdabcdabcdabcdabc,0x357aa8e0979a5b8d);
+	testCryptedCSN(0x21ba6565071f9299,0x34e80f88d5cf39ea);
+	testCryptedCSN(0x14e2adfc5bb7e134,0x6ac90c6508bd9ea3);
 
-	printf("Testing with anohter hash input\n");
-	testByteArray(0xd6ad000000000000,(uint8_t[8]) {0x2b,0x39,0x19,0x19,0x19,0x18,0x0a,0x0f},"cd588ac83aff19db");
-	testByteArray(0x0102000000000000,(uint8_t[8]) {0x08,0x1c,0x20,0x01,0x05,0x10,0x30,0x00},"0bdd6512073c460a");
-	testByteArray(0x1020000000000000,(uint8_t[8]) {0x00,0x02,0x07,0x18,0x10,0x01,0x04,0x0c},"0208211405f3381f");
-	testByteArray(0x1122000000000000,(uint8_t[8]) {0x08,0x1e,0x27,0x19,0x15,0x11,0x34,0x0c},"2bee256d40ac1f3a");
-	//TODO FIX THESE
-	testByteArray(0xabcd000000000000,(uint8_t[8]) {0xab,0xcd,0xab,0xcd,0xab,0xcd,0xab,0xcd},"a91c9ec66f7da592");
-	testByteArray(0xcdab000000000000,(uint8_t[8]) {0xbc,0xda,0xbc,0xda,0xbc,0xda,0xbc,0xda},"79ca5796a474e19b");
-	testByteArray(0xdabc000000000000,(uint8_t[8]) {0xcd,0xab,0xcd,0xab,0xcd,0xab,0xcd,0xab},"a8901b9f7ec76da4");
-	testByteArray(0xdabc000000000000,(uint8_t[8]) {0xda,0xbc,0xda,0xbc,0xda,0xbc,0xda,0xbc},"357aa8e0979a5b8d");
-
-
-
-	//printf("Temp key 0x%"PRIX64"\n", crypted_id);
-
-	//printarr("correct", (uint8_t[8]){0xcd,0x58,0x8a,0xc8,0x3a,0xff,0x19,0xdb},8);
 }
 
 int doKeyTests()
 {
-	uint8_t key[] =	//
+	uint8_t key[] =	;
+//
 	des_setkey_enc( &ctx_enc, key);
 	des_setkey_dec( &ctx_dec, key);
 	// Test hashing functions
-	//testTemporaryKeys(key);
+	testTemporaryKeys(key);
 
 	doTestsWithKnownInputs();
 	return 0;
