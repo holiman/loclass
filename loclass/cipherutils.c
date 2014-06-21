@@ -132,6 +132,15 @@ void reverse_arraybytes(uint8_t* arr, size_t len)
 		arr[i] = reversebytes(arr[i]);
 	}
 }
+void reverse_arraycopy(uint8_t* arr, uint8_t* dest, size_t len)
+{
+	uint8_t i;
+	for( i =0; i< len ; i++)
+	{
+		dest[i] = reversebytes(arr[i]);
+	}
+}
+
 void printarr(char * name, uint8_t* arr, int len)
 {
 	int i ;
@@ -143,7 +152,30 @@ void printarr(char * name, uint8_t* arr, int len)
 	printf("};\n");
 }
 
+void printvar(char * name, uint8_t* arr, int len)
+{
+	int i ;
+	printf("%s = ", name);
+	for(i =0 ;  i< len ; i++)
+	{
+		printf("%02x",*(arr+i));
+	}
+	printf("\n");
+}
 
+void printarr_human_readable(char * title, uint8_t* arr, int len)
+{
+	int i;
+	printf("\n\t%s\n", title);
+	for(i =0 ;  i< len ; i++)
+	{
+		if(i % 16 == 0)
+			printf("\n%02x| ", i );
+		printf("%02x ",*(arr+i));
+	}
+	printf("\n");
+
+}
 
 //-----------------------------
 // Code for testing below

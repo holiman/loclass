@@ -23,9 +23,15 @@
 
 #include <stdio.h>
 #include <cipherutils.h>
-
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
+#include <cipherutils.h>
 #include <cipher.h>
 #include <ikeys.h>
+
+#include <pthread.h>
+#include <elite_crack.h>
 
 int main(void)
 {
@@ -33,9 +39,15 @@ int main(void)
 	printf("IClass Cipher version 1.0, Copyright (C) 2014 Martin Holst Swende\n\n");
 	printf("Comes with ABSOLUTELY NO WARRANTY\n");
 	printf("This is free software, and you are welcome to use, abuse and repackage, please keep the credits\n\n");
+
+
 	testCipherUtils();
 	testMAC();
+
 	doKeyTests(0);
+
+	testElite();
+
 	return 0;
 }
 

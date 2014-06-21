@@ -28,6 +28,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <time.h>
 uint8_t keytable[] = { 0,0,0,0,0,0,0,0};
 
 /**
@@ -208,13 +209,16 @@ void MAC(uint8_t* k, BitstreamIn input, BitstreamOut out)
 void doMAC(uint8_t cc_nr[12],uint8_t div_key[8], uint8_t mac[4])
 {
 	// Reversed "on-the-wire" data
-	reverse_arraybytes(cc_nr,sizeof(cc_nr));
-	BitstreamIn bitstream = {cc_nr,sizeof(cc_nr) * 8,0};
-	uint8_t dest []= {0,0,0,0,0,0,0,0};
+	uint8_t cc_nr_r[12]  = {0};
+	reverse_arraycopy(cc_nr, cc_nr_r,12);
+	BitstreamIn bitstream = {cc_nr_r,12 * 8,0};
+	uint8_t dest [8]= {0,0,0,0,0,0,0,0};
 	BitstreamOut out = { dest, sizeof(dest)*8, 0 };
 	MAC(div_key,bitstream, out);
+
 	//The output MAC must also be reversed
-	reverse_arraybytes(mac, sizeof(mac));
+	reverse_arraybytes(dest, sizeof(dest));
+	memcpy(mac, dest, 4);
 	return;
 }
 
@@ -224,30 +228,24 @@ int testMAC()
 
 	//From the "dismantling.IClass" paper:
 	uint8_t cc_nr[] = {0xFE,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0,0,0,0};
-	// But actually, that must be reversed, it's "on-the-wire" data
-	reverse_arraybytes(cc_nr,sizeof(cc_nr));
-
 	//From the paper
-	uint8_t div_key[] = {0xE0,0x33,0xCA,0x41,0x9A,0xEE,0x43,0xF9};
-	uint8_t correct_MAC[] = {0x1d,0x49,0xC9,0xDA};
+	uint8_t div_key[8] = {0xE0,0x33,0xCA,0x41,0x9A,0xEE,0x43,0xF9};
+	uint8_t correct_MAC[4] = {0x1d,0x49,0xC9,0xDA};
 
-	BitstreamIn bitstream = {cc_nr,sizeof(cc_nr) * 8,0};
-	uint8_t dest []= {0,0,0,0,0,0,0,0};
-	BitstreamOut out = { dest, sizeof(dest)*8, 0 };
-	MAC(div_key,bitstream, out);
-	//The output MAC must also be reversed
-	reverse_arraybytes(dest, sizeof(dest));
+	uint8_t calculated_mac[4] = {0};
+	doMAC(cc_nr, div_key, calculated_mac);
 
-	if(memcmp(dest, correct_MAC,4) == 0)
+	if(memcmp(calculated_mac, correct_MAC,4) == 0)
 	{
 		printf("[+] MAC calculation OK!\n");
 
 	}else
 	{
 		printf("[+] FAILED: MAC calculation failed:\n");
-		printarr("    Calculated_MAC", dest, 4);
+		printarr("    Calculated_MAC", calculated_mac, 4);
 		printarr("    Correct_MAC   ", correct_MAC, 4);
 		return 1;
 	}
+
 	return 0;
 }

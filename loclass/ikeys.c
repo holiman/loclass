@@ -376,9 +376,15 @@ void hash0(uint64_t c, uint8_t k[8])
 	//printf("zerocounter=%d (should be 4)\n",zerocounter);
 	//printf("permute fin, y:0x%02x, x: 0x%02x\n", y, x);
 }
-
+/**
+ * @brief Performs Elite-class key diversification
+ * @param csn
+ * @param key
+ * @param div_key
+ */
 void diversifyKey(uint8_t csn[8], uint8_t key[8], uint8_t div_key[8])
 {
+
 	// Prepare the DES key
 	des_setkey_enc( &ctx_enc, key);
 
@@ -389,16 +395,14 @@ void diversifyKey(uint8_t csn[8], uint8_t key[8], uint8_t div_key[8])
 
 	//Calculate HASH0(DES))
 	uint64_t crypt_csn = bytes_to_num(crypted_csn, 8);
+	//uint64_t crypted_csn_swapped = swapZvalues(crypt_csn);
+
 	hash0(crypt_csn,div_key);
 }
 
 
-// ---------------------------------------------------------------------------------
-// ALL CODE BELOW THIS LINE IS PURELY TESTING
-// ---------------------------------------------------------------------------------
-// ----------------------------------------------------------------------------
-// TEST CODE BELOW
-// ----------------------------------------------------------------------------
+
+
 
 void testPermute()
 {
@@ -704,7 +708,10 @@ int doTestsWithKnownInputs()
 	// KSel from http://www.proxmark.org/forum/viewtopic.php?pid=10977#p10977
 	int errors = 0;
 	printf("[+] Testing DES encryption\n");
+//	uint8_t key[8] = {0x6c,0x8d,0x44,0xf9,0x2a,0x2d,0x01,0xbf};
+	printf("[+] Testing foo");
 	uint8_t key[8] = {0x6c,0x8d,0x44,0xf9,0x2a,0x2d,0x01,0xbf};
+
 	des_setkey_enc( &ctx_enc, key);
 	testDES2(0xbbbbaaaabbbbeeee,0xd6ad3ca619659e6b);
 
@@ -748,7 +755,6 @@ int readKeyFile(uint8_t key[8])
 int doKeyTests(uint8_t debuglevel)
 {
 	debug_print = debuglevel;
-	printf("[+] Testing key diversification ...\n");
 
 	printf("[+] Checking if the master key is present (iclass_key.bin)...\n");
 	uint8_t key[8] = {0};
@@ -785,8 +791,8 @@ int doKeyTests(uint8_t debuglevel)
 	return 0;
 }
 
+/**
 
-/*
 void checkParity2(uint8_t* key)
 {
 
