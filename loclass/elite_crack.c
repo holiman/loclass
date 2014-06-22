@@ -9,6 +9,7 @@
 #include "ikeys.h"
 #include "elite_crack.h"
 #include "fileutils.h"
+#include "des.h"
 /**
  * @brief Permutes a key from standard NIST format to Iclass specific format
  * @param key
@@ -166,7 +167,8 @@ int _bruteforceThreeBytes(	uint8_t cc_nr[],uint8_t csn[], uint8_t received_mac[4
 	uint8_t calculated_MAC[4] = { 0 };
 
 	uint8_t b0 = 0, b1 =0 ,b45 =0;
-	b0=0x00;
+	//b0=0x00;
+	b0=241;
 	int dbg = 0;
 	/**
 	  Debug run:
@@ -304,7 +306,71 @@ int bruteforceRemaining(uint8_t dump[], uint8_t keytable[])
 	saveFile("iclass_keytable_dump", "bin", keytable, 128);
 	return 0;
 }
+/**
+ * From dismantling iclass-paper:
+ *	Assume that an adversary somehow learns the first 16 bytes of hash2(K_cus ), i.e., y [0] and z [0] .
+ *	Then he can simply recover the master custom key K_cus by computing
+ *	K_cus = ~DES(z[0] , y[0] ) .
+ *
+ *	Furthermore, the adversary is able to verify that he has the correct K cus by
+ *	checking whether z [0] = DES enc (K_cus , ~K_cus ).
+ * @param keytable an array (128 bytes) of hash2(kcus)
+ * @param master_key where to put the master key
+ * @return 0 for ok, 1 for failz
+ */
+int calculateMasterKey(uint8_t keytable[], uint64_t master_key[] )
+{
+	des_context ctx_e = {DES_ENCRYPT,{0}};
 
+	uint8_t z_0[8] = {0};
+	uint8_t y_0[8] = {0};
+	uint8_t z_0_rev[8] = {0};
+	uint8_t key64[8] = {0};
+	uint8_t key64_negated[8] = {0};
+	uint8_t result[8] = {0};
+
+	// y_0 and z_0 are the first 16 bytes of the keytable
+	memcpy(y_0,keytable,8);
+	memcpy(z_0,keytable+8,8);
+
+	// Our DES-implementation uses the standard NIST
+	// format for keys, thus must translate from iclass
+	// format to NIST-format
+	permutekey_rev(z_0, z_0_rev);
+
+	// ~K_cus = DESenc(z[0], y[0])
+	des_setkey_enc( &ctx_e, z_0_rev );
+	des_crypt_ecb(&ctx_e, y_0, key64_negated);
+
+	int i;
+	for(i = 0; i < 8 ; i++)
+	{
+		key64[i] = ~key64_negated[i];
+	}
+
+	// Can we verify that the  key is correct?
+	// Once again, key is on iclass-format
+	uint8_t key64_stdformat[8] = {0};
+	permutekey_rev(key64, key64_stdformat);
+
+	des_setkey_enc( &ctx_e, key64_stdformat );
+	des_crypt_ecb(&ctx_e, key64_negated, result);
+	printf("\nHigh security custom key (Kcus):\n");
+	printvar("Std format   ", key64_stdformat,8);
+	printvar("Iclass format", key64,8);
+
+	if(master_key != NULL)
+		memcpy(master_key, key64, 8);
+
+	if(memcmp(z_0,result,4) != 0)
+	{
+		printf("Failed to verify calculated master key (k_cus)! Something is wrong.\n");
+		return 1;
+	}else{
+		printf("Key verified ok!\n");
+	}
+	return 0;
+}
 
 // ---------------------------------------------------------------------------------
 // ALL CODE BELOW THIS LINE IS PURELY TESTING
@@ -315,7 +381,7 @@ int bruteforceRemaining(uint8_t dump[], uint8_t keytable[])
 
 int _testBruteforce()
 {
-
+	int errors = 0;
 	// First test
 	printf("[+] Testing three-byte crack from known values...\n");
 	if(false){
@@ -335,6 +401,21 @@ int _testBruteforce()
 	// First test
 	printf("[+] Testing crack from dumpfile...\n");
 	{
+		/**
+		  Expected values for the dumpfile:
+			High Security Key Table
+
+			00  F1 35 59 A1 0D 5A 26 7F 18 60 0B 96 8A C0 25 C1
+			10  BF A1 3B B0 FF 85 28 75 F2 1F C6 8F 0E 74 8F 21
+			20  14 7A 55 16 C8 A9 7D B3 13 0C 5D C9 31 8D A9 B2
+			30  A3 56 83 0F 55 7E DE 45 71 21 D2 6D C1 57 1C 9C
+			40  78 2F 64 51 42 7B 64 30 FA 26 51 76 D3 E0 FB B6
+			50  31 9F BF 2F 7E 4F 94 B4 BD 4F 75 91 E3 1B EB 42
+			60  3F 88 6F B8 6C 2C 93 0D 69 2C D5 20 3C C1 61 95
+			70  43 08 A0 2F FE B3 26 D7 98 0B 34 7B 47 70 A0 AB
+
+			**** The 64-bit HS Custom Key Value = 5B7C62C491C11B39 ****
+	**/
 		uint8_t keytable[128] = {0};
 		char * filename = "iclass_dump.bin";
 		uint8_t dump[128*(8+4+4)] = {0};
@@ -350,10 +431,12 @@ int _testBruteforce()
 		clock_t t2 = clock();
 		float diff = (((float)t2 - (float)t1) / CLOCKS_PER_SEC );
 		printf("\nPerformed full crack in %f seconds\n",diff);
-		printarr_human_readable("High Security Key Table", keytable, 128);
+		printarr_human_readable("High Security Key Table (a.k.a Hash2)", keytable, 128);
+
+		errors |= calculateMasterKey(keytable, NULL);
 
 	}
-	return 0;
+	return errors;
 }
 
 int _test_iclass_key_permutation()
@@ -381,6 +464,7 @@ int _test_iclass_key_permutation()
 		printarr("testcase_output_rev", testcase_output_rev, 8);
 		return 1;
 	}
+
 	printf("[+] Iclass key permutation OK!\n");
 	return 0;
 }

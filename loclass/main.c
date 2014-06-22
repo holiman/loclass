@@ -30,7 +30,6 @@
 #include <cipher.h>
 #include <ikeys.h>
 
-#include <pthread.h>
 #include <elite_crack.h>
 
 int main(void)
