@@ -29,6 +29,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
+#include "fileutils.h"
 uint8_t keytable[] = { 0,0,0,0,0,0,0,0};
 
 /**
@@ -174,8 +175,6 @@ void output(uint8_t* k,State s, BitstreamIn* in,  BitstreamOut* out)
 	{
 		return;
 	}
-	//printf("bitsleft %d" , bitsLeft(in));
-	//printf(" %0d", s.r >> 2 & 1);
 	pushBit(out,(s.r >> 2) & 1);
 	//Remove first bit
 	uint8_t x0 = headBit(in);
@@ -224,7 +223,7 @@ void doMAC(uint8_t cc_nr[12],uint8_t div_key[8], uint8_t mac[4])
 
 int testMAC()
 {
-	printf("[+] Testing MAC calculation...\n");
+	PrintAndLog("[+] Testing MAC calculation...");
 
 	//From the "dismantling.IClass" paper:
 	uint8_t cc_nr[] = {0xFE,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0,0,0,0};
@@ -237,11 +236,11 @@ int testMAC()
 
 	if(memcmp(calculated_mac, correct_MAC,4) == 0)
 	{
-		printf("[+] MAC calculation OK!\n");
+		PrintAndLog("[+] MAC calculation OK!");
 
 	}else
 	{
-		printf("[+] FAILED: MAC calculation failed:\n");
+		PrintAndLog("[+] FAILED: MAC calculation failed:");
 		printarr("    Calculated_MAC", calculated_mac, 4);
 		printarr("    Correct_MAC   ", correct_MAC, 4);
 		return 1;

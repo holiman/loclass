@@ -86,7 +86,7 @@ void permutekey_rev(uint8_t key[8], uint8_t dest[8])
 int _readFromDump(uint8_t dump[], uint8_t cc_nr[], uint8_t csn[], uint8_t received_mac[], int i)
 {
 	if(i  > 127){
-		printf("Error, i > 127, bad things will happen... \n");
+		PrintAndLog("Error, i > 127, bad things will happen... ");
 		return 1;
 	}
 
@@ -97,7 +97,7 @@ int _readFromDump(uint8_t dump[], uint8_t cc_nr[], uint8_t csn[], uint8_t receiv
 	memcpy(key_index, attack.key_indices, 8);
 	if(memcmp(csn, dump+i*16, 8) != 0)
 	{
-		printf("Something is wrong. \nExpected CSN: %02x%02x%02x%02x%02x%02x%02x%02x\nFound CSN:   %02x%02x%02x%02x%02x%02x%02x%02x",
+		PrintAndLog("Something is wrong. \nExpected CSN: %02x%02x%02x%02x%02x%02x%02x%02x\nFound CSN:   %02x%02x%02x%02x%02x%02x%02x%02x",
 				csn[0],csn[1], csn[2],csn[3],csn[4],csn[5], csn[6],csn[7],
 				dump[i*16],	dump[i*16+1],dump[i*16+2],dump[i*16+3],
 				dump[i*16+4],dump[i*16+5],dump[i*16+6],dump[i*16+7]);
@@ -167,8 +167,8 @@ int _bruteforceThreeBytes(	uint8_t cc_nr[],uint8_t csn[], uint8_t received_mac[4
 	uint8_t calculated_MAC[4] = { 0 };
 
 	uint8_t b0 = 0, b1 =0 ,b45 =0;
-	//b0=0x00;
-	b0=241;
+	b0=0x00;
+	//b0=241;
 	int dbg = 0;
 	/**
 	  Debug run:
@@ -180,6 +180,8 @@ int _bruteforceThreeBytes(	uint8_t cc_nr[],uint8_t csn[], uint8_t received_mac[4
 	mac = 6f22b5ab
 
 	**/
+	PrintAndLog("Performing up to 2^24 MAC calculations, may take a few minutes...");
+
 	do {
 		b1=00;
 		do {
@@ -214,7 +216,7 @@ int _bruteforceThreeBytes(	uint8_t cc_nr[],uint8_t csn[], uint8_t received_mac[4
 					keytable[0x0] = b0;
 					keytable[0x1] = b1;
 					keytable[0x45] = b45;
-					printf("Found! 0x00,0x01,0x45 = [0x%02x,0x%02x,0x%02x]\n", b0,b1,b45);
+					PrintAndLog("Found! 0x00,0x01,0x45 = [0x%02x,0x%02x,0x%02x]", b0,b1,b45);
 					return 0;
 				}
 
@@ -289,7 +291,7 @@ int bruteforceRemaining(uint8_t dump[], uint8_t keytable[])
 			}
 			if(memcmp(calculated_MAC, received_mac, 4) == 0)
 			{
-				printf("[0x%02x:0x%02x]", recovery_byte, b);
+				PrintAndLog("[0x%02x:0x%02x]", recovery_byte, b);
 				found = true;
 				break;
 			}
@@ -297,12 +299,11 @@ int bruteforceRemaining(uint8_t dump[], uint8_t keytable[])
 
 		if(! found)
 		{
-			printf("Failed to recover byte 0x%02x\n", recovery_byte);
+			PrintAndLog("Failed to recover byte 0x%02x", recovery_byte);
 			return 1;
 		}
 		found = false;
 	}
-	printf("\n");
 	saveFile("iclass_keytable_dump", "bin", keytable, 128);
 	return 0;
 }
@@ -355,7 +356,7 @@ int calculateMasterKey(uint8_t keytable[], uint64_t master_key[] )
 
 	des_setkey_enc( &ctx_e, key64_stdformat );
 	des_crypt_ecb(&ctx_e, key64_negated, result);
-	printf("\nHigh security custom key (Kcus):\n");
+	PrintAndLog("\nHigh security custom key (Kcus):");
 	printvar("Std format   ", key64_stdformat,8);
 	printvar("Iclass format", key64,8);
 
@@ -364,10 +365,10 @@ int calculateMasterKey(uint8_t keytable[], uint64_t master_key[] )
 
 	if(memcmp(z_0,result,4) != 0)
 	{
-		printf("Failed to verify calculated master key (k_cus)! Something is wrong.\n");
+		PrintAndLog("Failed to verify calculated master key (k_cus)! Something is wrong.");
 		return 1;
 	}else{
-		printf("Key verified ok!\n");
+		PrintAndLog("Key verified ok!\n");
 	}
 	return 0;
 }
@@ -383,8 +384,8 @@ int _testBruteforce()
 {
 	int errors = 0;
 	// First test
-	printf("[+] Testing three-byte crack from known values...\n");
-	if(false){
+	PrintAndLog("[+] Testing three-byte crack from known values...");
+	if(true){
 		clock_t t1 = clock();
 		uint8_t cc_nr[] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xa9,0x7d,0xde,0xd0};
 		uint8_t csn[8] = { 0x00,0x0b,0x0f,0xff,0xf7,0xff,0x12,0xe0 };
@@ -394,12 +395,12 @@ int _testBruteforce()
 		clock_t t2 = clock();
 
 		float diff = (((float)t2 - (float)t1) / CLOCKS_PER_SEC );
-		printf("\nPerformed three-byte crack in %f seconds\n",diff);
+		PrintAndLog("\nPerformed three-byte crack in %f seconds",diff);
 
 	}
 
 	// First test
-	printf("[+] Testing crack from dumpfile...\n");
+	PrintAndLog("[+] Testing crack from dumpfile...");
 	{
 		/**
 		  Expected values for the dumpfile:
@@ -415,22 +416,22 @@ int _testBruteforce()
 			70  43 08 A0 2F FE B3 26 D7 98 0B 34 7B 47 70 A0 AB
 
 			**** The 64-bit HS Custom Key Value = 5B7C62C491C11B39 ****
-	**/
+		**/
 		uint8_t keytable[128] = {0};
 		char * filename = "iclass_dump.bin";
 		uint8_t dump[128*(8+4+4)] = {0};
 		if( loadFile(filename, dump, sizeof(dump)))
 		{
-			printf("Failed to load dump-file (%s)\n" , filename);
+			PrintAndLog("Failed to load dump-file (%s)" , filename);
 			return 1;
 		}
-		printf("[+] Loaded dump file %s\n", filename);
+		PrintAndLog("[+] Loaded dump file %s", filename);
 		clock_t t1 = clock();
 		bruteforceThreeBytes(dump,keytable);
 		bruteforceRemaining(dump, keytable);
 		clock_t t2 = clock();
 		float diff = (((float)t2 - (float)t1) / CLOCKS_PER_SEC );
-		printf("\nPerformed full crack in %f seconds\n",diff);
+		PrintAndLog("\nPerformed full crack in %f seconds",diff);
 		printarr_human_readable("High Security Key Table (a.k.a Hash2)", keytable, 128);
 
 		errors |= calculateMasterKey(keytable, NULL);
@@ -451,7 +452,7 @@ int _test_iclass_key_permutation()
 
 	if(memcmp(testcase_output, testcase_output_correct,8) != 0)
 	{
-		printf("Error with iclass key permute!\n");
+		PrintAndLog("Error with iclass key permute!");
 		printarr("testcase_output", testcase_output, 8);
 		printarr("testcase_output_correct", testcase_output_correct, 8);
 		return 1;
@@ -459,20 +460,20 @@ int _test_iclass_key_permutation()
 	}
 	if(memcmp(testcase, testcase_output_rev, 8) != 0)
 	{
-		printf("Error with reverse iclass key permute\n");
+		PrintAndLog("Error with reverse iclass key permute");
 		printarr("testcase", testcase, 8);
 		printarr("testcase_output_rev", testcase_output_rev, 8);
 		return 1;
 	}
 
-	printf("[+] Iclass key permutation OK!\n");
+	PrintAndLog("[+] Iclass key permutation OK!");
 	return 0;
 }
 
 int testElite()
 {
-	printf("[+] Testing iClass Elite functinality...");
-	printf("[+] Testing key diversification ...\n");
+	PrintAndLog("[+] Testing iClass Elite functinality...");
+	PrintAndLog("[+] Testing key diversification ...");
 
 	int errors = 0 ;
 	errors +=_test_iclass_key_permutation();

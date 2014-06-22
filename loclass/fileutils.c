@@ -2,6 +2,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <stdarg.h>
+#include "fileutils.h"
 /**
  * @brief checks if a file exists
  * @param filename
@@ -31,25 +33,41 @@ int saveFile(const char *preferredName, const char *suffix, const void* data, si
 	/*Opening file for writing in binary mode*/
 	FILE *fileHandle=fopen(fileName,"wb");
 	if(!fileHandle) {
-		printf("Failed to write to file '%s'\n", fileName);
+		PrintAndLog("Failed to write to file '%s'", fileName);
 		return 1;
 	}
 	fwrite(data, 1,	datalen, fileHandle);
 	fclose(fileHandle);
-	printf("Saved data to '%s'\n", fileName);
+	PrintAndLog("Saved data to '%s'", fileName);
 	free(fileName);
 
 	return 0;
 }
 
-
 int loadFile(const char *fileName, void* data, size_t datalen)
 {
 	FILE *filehandle = fopen(fileName, "rb");
 	if(!filehandle) {
-		printf("Failed to read from file '%s'\n", fileName);
+		PrintAndLog("Failed to read from file '%s'", fileName);
 		return 1;
 	}
 	fread(data,datalen,1,filehandle); // read 10 bytes to our buffer
 	return 0;
+}
+/**
+ * Utility function to print to console. This is used consistently within the library instead
+ * of printf, but it actually only calls printf (and adds a linebreak).
+ * The reason to have this method is to
+ * make it simple to plug this library into proxmark, which has this function already to
+ * write also to a logfile. When doing so, just delete this function.
+ * @param fmt
+ */
+void PrintAndLog(char *fmt, ...)
+{
+
+	va_list args;
+	va_start(args,fmt);
+	vprintf(fmt,args);
+	va_end(args);
+	printf("\n");
 }

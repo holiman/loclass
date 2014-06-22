@@ -20,6 +20,14 @@ int saveFile(const char *preferredName, const char *suffix, const void* data, si
  * @return
  */
 
-int loadFile(const char *fileName, const void* data, size_t datalen);
+int loadFile(const char *fileName, void* data, size_t datalen);
 
+/**
+ * Utility function to print to console. This is used consistently within the library instead
+ * of printf, but it actually only calls printf. The reason to have this method is to
+ *make it simple to plug this library into proxmark, which has this function already to
+ * write also to a logfile. When doing so, just delete this function.
+ * @param fmt
+ */
+void PrintAndLog(char *fmt, ...);
 #endif // FILEUTILS_H

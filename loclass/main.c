@@ -35,9 +35,9 @@
 int main(void)
 {
 
-	printf("IClass Cipher version 1.0, Copyright (C) 2014 Martin Holst Swende\n\n");
-	printf("Comes with ABSOLUTELY NO WARRANTY\n");
-	printf("This is free software, and you are welcome to use, abuse and repackage, please keep the credits\n\n");
+	PrintAndLog("IClass Cipher version 1.0, Copyright (C) 2014 Martin Holst Swende\n");
+	PrintAndLog("Comes with ABSOLUTELY NO WARRANTY");
+	PrintAndLog("This is free software, and you are welcome to use, abuse and repackage, please keep the credits\n");
 
 
 	testCipherUtils();

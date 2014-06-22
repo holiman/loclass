@@ -25,7 +25,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-
+#include "fileutils.h"
 /**
  *
  * @brief Return and remove the first bit (x0) in the stream : <x0 x1 x2 x3 ... xn >
@@ -143,38 +143,55 @@ void reverse_arraycopy(uint8_t* arr, uint8_t* dest, size_t len)
 
 void printarr(char * name, uint8_t* arr, int len)
 {
+	int cx;
+	size_t outsize = 40+strlen(name)+len*5;
+	char* output = malloc(outsize);
+	memset(output, 0,outsize);
+
 	int i ;
-	printf("uint8_t %s[] = {", name);
+	cx = snprintf(output,outsize, "uint8_t %s[] = {", name);
 	for(i =0 ;  i< len ; i++)
 	{
-		printf("0x%02x,",*(arr+i));
+		cx += snprintf(output+cx,outsize-cx,"0x%02x,",*(arr+i));//5 bytes per byte
 	}
-	printf("};\n");
+	cx += snprintf(output+cx,outsize-cx,"};");
+	PrintAndLog(output);
 }
 
 void printvar(char * name, uint8_t* arr, int len)
 {
+	int cx;
+	size_t outsize = 40+strlen(name)+len*2;
+	char* output = malloc(outsize);
+	memset(output, 0,outsize);
+
 	int i ;
-	printf("%s = ", name);
+	cx = snprintf(output,outsize,"%s = ", name);
 	for(i =0 ;  i< len ; i++)
 	{
-		printf("%02x",*(arr+i));
+		cx += snprintf(output+cx,outsize-cx,"%02x",*(arr+i));//2 bytes per byte
 	}
-	printf("\n");
+
+	PrintAndLog(output);
 }
 
 void printarr_human_readable(char * title, uint8_t* arr, int len)
 {
+	int cx;
+	size_t outsize = 100+strlen(title)+len*4;
+	char* output = malloc(outsize);
+	memset(output, 0,outsize);
+
+
 	int i;
-	printf("\n\t%s\n", title);
+	cx = snprintf(output,outsize,  "\n\t%s\n", title);
 	for(i =0 ;  i< len ; i++)
 	{
 		if(i % 16 == 0)
-			printf("\n%02x| ", i );
-		printf("%02x ",*(arr+i));
+			cx += snprintf(output+cx,outsize-cx,"\n%02x| ", i );
+		cx += snprintf(output+cx,outsize-cx, "%02x ",*(arr+i));
 	}
-	printf("\n");
-
+	PrintAndLog(output);
 }
 
 //-----------------------------
@@ -197,14 +214,14 @@ int testBitStream()
 	}
 	if(memcmp(input, output, sizeof(input)) == 0)
 	{
-		printf("    Bitstream test 1 ok\n");
+		PrintAndLog("    Bitstream test 1 ok");
 	}else
 	{
-		printf("    Bitstream test 1 failed\n");
+		PrintAndLog("    Bitstream test 1 failed");
 		uint8_t i;
 		for(i = 0 ; i < sizeof(input) ; i++)
 		{
-			printf("    IN %02x, OUT %02x\n", input[i], output[i]);
+			PrintAndLog("    IN %02x, OUT %02x", input[i], output[i]);
 		}
 		return 1;
 	}
@@ -231,14 +248,14 @@ int testReversedBitstream()
 	}
 	if(memcmp(input, output, sizeof(input)) == 0)
 	{
-		printf("    Bitstream test 2 ok\n");
+		PrintAndLog("    Bitstream test 2 ok");
 	}else
 	{
-		printf("    Bitstream test 2 failed\n");
+		PrintAndLog("    Bitstream test 2 failed");
 		uint8_t i;
 		for(i = 0 ; i < sizeof(input) ; i++)
 		{
-			printf("    IN %02x, MIDDLE: %02x, OUT %02x\n", input[i],reverse[i], output[i]);
+			PrintAndLog("    IN %02x, MIDDLE: %02x, OUT %02x", input[i],reverse[i], output[i]);
 		}
 		return 1;
 	}
@@ -248,7 +265,7 @@ int testReversedBitstream()
 
 int testCipherUtils(void)
 {
-	printf("[+] Testing some internals...\n");
+	PrintAndLog("[+] Testing some internals...");
 	int retval = 0;
 	retval |= testBitStream();
 	retval |= testReversedBitstream();
