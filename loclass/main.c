@@ -29,8 +29,17 @@
 #include <cipherutils.h>
 #include <cipher.h>
 #include <ikeys.h>
-
+#include <fileutils.h>
 #include <elite_crack.h>
+
+void unitTests()
+{
+	testCipherUtils();
+	testMAC();
+	doKeyTests(0);
+	testElite();
+
+}
 
 int main(void)
 {
@@ -38,14 +47,13 @@ int main(void)
 	PrintAndLog("IClass Cipher version 1.0, Copyright (C) 2014 Martin Holst Swende\n");
 	PrintAndLog("Comes with ABSOLUTELY NO WARRANTY");
 	PrintAndLog("This is free software, and you are welcome to use, abuse and repackage, please keep the credits\n");
-
-
-	testCipherUtils();
-	testMAC();
-
-	doKeyTests(0);
-
-	testElite();
+	if(false)
+	{
+		unitTests();
+	}else
+	{
+		bruteforceFile("/home/martin/tools/pm3-iclass/client/iclass_attack_swb.bin",0);
+	}
 
 	return 0;
 }

@@ -31,9 +31,26 @@ int bruteforceRemaining(uint8_t dump[], uint8_t keytable[]);
  * @param keytable, where to write the found values. Should be 128 byte array of uint8's.
  */
 int bruteforceThreeBytes(uint8_t dump[], uint8_t keytable[]);
+
+int bruteforceFile(const char *filename, int verify);
+
 /**
  * @brief Test function
  * @return
  */
 int testElite();
+
+typedef struct {
+	uint8_t simulated_csn[8];
+	uint8_t key_indices[8];
+	uint8_t recovered_keybytes[2];
+} iclass_attack;
+
+/**
+  The malicious CSNs used, and their respective hash1 values, and the bytes they retrieve
+**/
+iclass_attack attack_data[8];
+
+
+
 #endif
