@@ -86,7 +86,7 @@ void permutekey_rev(uint8_t key[8], uint8_t dest[8])
  * @brief Reads data from the iclass-reader-attack dump file.
  * @param dump, data from a iclass reader attack dump.  The format of the dumpdata is expected to be as follows:
 		<8 byte CSN><4 byte NR><4 byte MAC>
-		.. 126 times...
+		.. 8 times...
  * @param cc_nr an array to store cc_nr into (12 bytes)
  * @param csn an arracy ot store CSN into (8 bytes)
  * @param received_mac an array to store MAC into (4 bytes)
@@ -465,7 +465,6 @@ int bruteforceFile(const char *filename, int verify)
  * @param filename
  * @param verify
  * @return
- */
 
 int bruteforceFile_proxclone_format(const char *filename, int verify)
 {
@@ -490,7 +489,7 @@ int bruteforceFile_proxclone_format(const char *filename, int verify)
 
 	return errors;
 }
-
+**/
 // ---------------------------------------------------------------------------------
 // ALL CODE BELOW THIS LINE IS PURELY TESTING
 // ---------------------------------------------------------------------------------

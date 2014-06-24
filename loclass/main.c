@@ -26,35 +26,69 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
-#include <cipherutils.h>
-#include <cipher.h>
-#include <ikeys.h>
-#include <fileutils.h>
-#include <elite_crack.h>
+#include <unistd.h>
+#include <ctype.h>
+#include "cipherutils.h"
+#include "cipher.h"
+#include "ikeys.h"
+#include "fileutils.h"
+#include "elite_crack.h"
 
-void unitTests()
+int unitTests()
 {
-	testCipherUtils();
-	testMAC();
-	doKeyTests(0);
-	testElite();
+	int errors = testCipherUtils();
+	errors += testMAC();
+	errors += doKeyTests(0);
+	errors += testElite();
+	return errors;
+}
+int showHelp()
+{
+	PrintAndLog("Usage: iclazz [options]");
+	PrintAndLog("Options:");
+	PrintAndLog("-t                 Perform self-test");
+	PrintAndLog("-h                 Show this help");
+	PrintAndLog("-f <filename>      Bruteforce iclass dumpfile");
+	PrintAndLog("                   An iclass dumpfile is assumed to consist of 8 malicious CSNs,");
+	PrintAndLog("                   on the binary format: ");
+	PrintAndLog("                   <8 byte CSN><4 byte NR><4 byte MAC>");
+	PrintAndLog("                   <8 byte CSN><4 byte NR><4 byte MAC>");
+	PrintAndLog("                  ... totalling 8*16 bytes");
 
+	return 0;
 }
 
-int main(void)
+int main (int argc, char **argv)
 {
-
-	PrintAndLog("IClass Cipher version 1.0, Copyright (C) 2014 Martin Holst Swende\n");
+	PrintAndLog("IClass Cipher version 1.2, Copyright (C) 2014 Martin Holst Swende\n");
 	PrintAndLog("Comes with ABSOLUTELY NO WARRANTY");
 	PrintAndLog("This is free software, and you are welcome to use, abuse and repackage, please keep the credits\n");
-	if(false)
-	{
-		unitTests();
-	}else
-	{
-		bruteforceFile("/home/martin/tools/pm3-iclass/client/iclass_attack_swb.bin",0);
-	}
-
+	char *fileName = NULL;
+	int c;
+	while ((c = getopt (argc, argv, "thf:")) != -1)
+	  switch (c)
+		{
+		case 't':
+		  return unitTests();
+		case 'h':
+		  return showHelp();
+		case 'f':
+		  fileName = optarg;
+		  return bruteforceFile(fileName,0);
+		case '?':
+		  if (optopt == 'f')
+			fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+		  else if (isprint (optopt))
+			fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+		  else
+			fprintf (stderr,
+					 "Unknown option character `\\x%x'.\n",
+					 optopt);
+		  return 1;
+		//default:
+		  //showHelp();
+		}
+	showHelp();
 	return 0;
 }
 
