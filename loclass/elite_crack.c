@@ -177,7 +177,7 @@ int _bruteforceThreeBytes(	uint8_t cc_nr[],uint8_t csn[], uint8_t received_mac[4
 	uint8_t b0 = 0, b1 =0 ,b45 =0;
 	b0=0x00;
 	//b0=241;
-	b0=0xdf;
+	//b0=0xdf;
 	int dbg = 0;
 	/**
 	  Debug run:
@@ -310,6 +310,7 @@ int bruteforceTwobytes(uint8_t dump[], uint8_t keytable[])
 	return errors;
 }
 
+
 /**
  * From dismantling iclass-paper:
  *	Assume that an adversary somehow learns the first 16 bytes of hash2(K_cus ), i.e., y [0] and z [0] .
@@ -378,7 +379,7 @@ int calculateMasterKey(uint8_t keytable[], uint64_t master_key[] )
 
 int verifyAndReorder(uint8_t dump[])
 {
-	uint8_t newdump[128*16];
+	uint8_t newdump[8*16];
 	uint8_t csn[8] = {0};
 	uint8_t cc_nr[8] = {0};
 	uint8_t received_mac[8] = {0};
@@ -393,7 +394,7 @@ int verifyAndReorder(uint8_t dump[])
 			int j;
 			int found = 0;
 			//Wrong order, search for it
-			for(j =0 ; j < 126; j++)
+			for(j =0 ; j < 8; j++)
 			{
 				if(memcmp(attack.simulated_csn, dump+j*16,8)== 0)
 				{// Found it
@@ -424,11 +425,19 @@ int verifyAndReorder(uint8_t dump[])
 	return error;
 }
 
+/**
+ * Perform a bruteforce against a file which has been saved by pm3 "hf iclass sim 2" - command,
+ * using the 'optimal' 8-CSN approach.
+ * @brief bruteforceFile
+ * @param filename
+ * @param verify
+ * @return
+ */
 int bruteforceFile(const char *filename, int verify)
 {
 	int errors = 0;
 	uint8_t keytable[128] = {0};
-	uint8_t dump[128*(8+4+4)] = {0};
+	uint8_t dump[8*16] = {0};
 	if( loadFile(filename, dump, sizeof(dump)))
 	{
 		PrintAndLog("Failed to load dump-file (%s)" , filename);
@@ -450,19 +459,25 @@ int bruteforceFile(const char *filename, int verify)
 
 	return errors;
 }
-int bruteforceFile2(const char *filename, int verify)
+/**
+ * Perform a bruteforce against a file which uses the proxclone.com-variant with 126 CSNs,
+ * @brief bruteforceFile
+ * @param filename
+ * @param verify
+ * @return
+ */
+
+int bruteforceFile_proxclone_format(const char *filename, int verify)
 {
 	int errors = 0;
 	uint8_t keytable[128] = {0};
-	uint8_t dump[8*(8+4+4)] = {0};
+	uint8_t dump[126*(16)] = {0};
 	if( loadFile(filename, dump, sizeof(dump)))
 	{
 		PrintAndLog("Failed to load dump-file (%s)" , filename);
 		return 1;
 	}
 	PrintAndLog("[+] Loaded dump file %s", filename);
-	if(verify)
-		verifyAndReorder(dump);
 
 	clock_t t1 = clock();
 	errors += bruteforceThreeBytes(dump,keytable);
