@@ -89,6 +89,7 @@ int main (int argc, char **argv)
 		  //showHelp();
 		}
 	showHelp();
+	unitTests();
 	return 0;
 }
 

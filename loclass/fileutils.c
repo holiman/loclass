@@ -51,7 +51,8 @@ int loadFile(const char *fileName, void* data, size_t datalen)
 		PrintAndLog("Failed to read from file '%s'", fileName);
 		return 1;
 	}
-	fread(data,datalen,1,filehandle); // read 10 bytes to our buffer
+	fread(data,datalen,1,filehandle);
+	fclose(filehandle);
 	return 0;
 }
 /**
