@@ -74,7 +74,7 @@ int main (int argc, char **argv)
 		  return showHelp();
 		case 'f':
 		  fileName = optarg;
-		  return bruteforceFile(fileName,0);
+		  return bruteforceFileNoKeys(fileName);
 		case '?':
 		  if (optopt == 'f')
 			fprintf (stderr, "Option -%c requires an argument.\n", optopt);
@@ -89,7 +89,6 @@ int main (int argc, char **argv)
 		  //showHelp();
 		}
 	showHelp();
-	unitTests();
 	return 0;
 }
 

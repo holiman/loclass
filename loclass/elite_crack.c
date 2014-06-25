@@ -412,6 +412,7 @@ int bruteforceDump(uint8_t dump[], size_t dumpsize, uint16_t keytable[])
  */
 int bruteforceFile(const char *filename, uint16_t keytable[])
 {
+
 	FILE *f = fopen(filename, "rb");
 	if(!f) {
 		PrintAndLog("Failed to read from file '%s'", filename);
@@ -427,8 +428,19 @@ int bruteforceFile(const char *filename, uint16_t keytable[])
 	fclose(f);
 
 	return bruteforceDump(dump,fsize,keytable);
-
 }
+/**
+ *
+ * @brief Same as above, if you don't care about the returned keytable (results only printed on screen)
+ * @param filename
+ * @return
+ */
+int bruteforceFileNoKeys(const char *filename)
+{
+	uint16_t keytable[128] = {0};
+	return bruteforceFile(filename, keytable);
+}
+
 // ---------------------------------------------------------------------------------
 // ALL CODE BELOW THIS LINE IS PURELY TESTING
 // ---------------------------------------------------------------------------------

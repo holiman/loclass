@@ -24,6 +24,13 @@ void permutekey_rev(uint8_t key[8], uint8_t dest[8]);
  */
 int bruteforceFile(const char *filename, uint16_t keytable[]);
 /**
+ *
+ * @brief Same as above, if you don't care about the returned keytable (results only printed on screen)
+ * @param filename
+ * @return
+ */
+int bruteforceFileNoKeys(const char *filename);
+/**
  * @brief Same as bruteforcefile, but uses a an array of dumpdata instead
  * @param dump
  * @param dumpsize
