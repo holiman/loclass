@@ -49,11 +49,13 @@ int showHelp()
 	PrintAndLog("-t                 Perform self-test");
 	PrintAndLog("-h                 Show this help");
 	PrintAndLog("-f <filename>      Bruteforce iclass dumpfile");
-	PrintAndLog("                   An iclass dumpfile is assumed to consist of 8 malicious CSNs,");
-	PrintAndLog("                   on the binary format: ");
-	PrintAndLog("                   <8 byte CSN><4 byte NR><4 byte MAC>");
-	PrintAndLog("                   <8 byte CSN><4 byte NR><4 byte MAC>");
-	PrintAndLog("                  ... totalling 8*16 bytes");
+	PrintAndLog("                   An iclass dumpfile is assumed to consist of an arbitrary number of malicious CSNs, and their protocol responses");
+	PrintAndLog("                   The the binary format of the file is expected to be as follows: ");
+	PrintAndLog("                   <8 byte CSN><8 byte CC><4 byte NR><4 byte MAC>");
+	PrintAndLog("                   <8 byte CSN><8 byte CC><4 byte NR><4 byte MAC>");
+	PrintAndLog("                   <8 byte CSN><8 byte CC><4 byte NR><4 byte MAC>");
+	PrintAndLog("                  ... totalling N*24 bytes");
+	PrintAndLog("                  Check iclass_dump.bin for an example");
 
 	return 0;
 }
