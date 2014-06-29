@@ -43,14 +43,13 @@ bool headBit( BitstreamIn *stream);
 bool tailBit( BitstreamIn *stream);
 void pushBit( BitstreamOut *stream, bool bit);
 int bitsLeft( BitstreamIn *stream);
-bool xorbits_8(uint8_t val);
-bool xorbits_16(uint16_t val);
+
 int testCipherUtils(void);
 int testMAC();
 void push6bits( BitstreamOut* stream, uint8_t bits);
 void EncryptDES(bool key[56], bool outBlk[64], bool inBlk[64], int verbose) ;
-void num_to_bytes(uint64_t n, size_t len, uint8_t* dest);
-uint64_t bytes_to_num(uint8_t* src, size_t len);
+void x_num_to_bytes(uint64_t n, size_t len, uint8_t* dest);
+uint64_t x_bytes_to_num(uint8_t* src, size_t len);
 uint8_t reversebytes(uint8_t b);
 void reverse_arraybytes(uint8_t* arr, size_t len);
 void reverse_arraycopy(uint8_t* arr, uint8_t* dest, size_t len);

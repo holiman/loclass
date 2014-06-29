@@ -33,12 +33,12 @@ int saveFile(const char *preferredName, const char *suffix, const void* data, si
 	/*Opening file for writing in binary mode*/
 	FILE *fileHandle=fopen(fileName,"wb");
 	if(!fileHandle) {
-		PrintAndLog("Failed to write to file '%s'", fileName);
+		prnlog("Failed to write to file '%s'", fileName);
 		return 1;
 	}
 	fwrite(data, 1,	datalen, fileHandle);
 	fclose(fileHandle);
-	PrintAndLog("Saved data to '%s'", fileName);
+	prnlog("Saved data to '%s'", fileName);
 	free(fileName);
 
 	return 0;
@@ -48,7 +48,7 @@ int loadFile(const char *fileName, void* data, size_t datalen)
 {
 	FILE *filehandle = fopen(fileName, "rb");
 	if(!filehandle) {
-		PrintAndLog("Failed to read from file '%s'", fileName);
+		prnlog("Failed to read from file '%s'", fileName);
 		return 1;
 	}
 	fread(data,datalen,1,filehandle);
@@ -63,7 +63,7 @@ int loadFile(const char *fileName, void* data, size_t datalen)
  * write also to a logfile. When doing so, just delete this function.
  * @param fmt
  */
-void PrintAndLog(char *fmt, ...)
+void prnlog(char *fmt, ...)
 {
 
 	va_list args;

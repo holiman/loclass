@@ -205,25 +205,30 @@ void MAC(uint8_t* k, BitstreamIn input, BitstreamOut out)
 	output(k,initState,&input_32_zeroes,&out);
 }
 
-void doMAC(uint8_t cc_nr[12],uint8_t div_key[8], uint8_t mac[4])
+void doMAC(uint8_t *cc_nr_p, int length, uint8_t *div_key_p, uint8_t mac[4])
 {
-	// Reversed "on-the-wire" data
-	uint8_t cc_nr_r[12]  = {0};
-	reverse_arraycopy(cc_nr, cc_nr_r,12);
-	BitstreamIn bitstream = {cc_nr_r,12 * 8,0};
-	uint8_t dest [8]= {0,0,0,0,0,0,0,0};
-	BitstreamOut out = { dest, sizeof(dest)*8, 0 };
-	MAC(div_key,bitstream, out);
+    uint8_t *cc_nr;
+    uint8_t div_key[8];
+    cc_nr=(uint8_t*)malloc(length+1);
+    memcpy(cc_nr,cc_nr_p,length);
+    memcpy(div_key,div_key_p,8);
 
-	//The output MAC must also be reversed
-	reverse_arraybytes(dest, sizeof(dest));
-	memcpy(mac, dest, 4);
-	return;
+    reverse_arraybytes(cc_nr,length);
+    BitstreamIn bitstream = {cc_nr,length * 8,0};
+    uint8_t dest []= {0,0,0,0,0,0,0,0};
+    BitstreamOut out = { dest, sizeof(dest)*8, 0 };
+    MAC(div_key,bitstream, out);
+    //The output MAC must also be reversed
+    reverse_arraybytes(dest, sizeof(dest));
+    memcpy(mac, dest, 4);
+    //printf("Calculated_MAC\t%02x%02x%02x%02x\n", dest[0],dest[1],dest[2],dest[3]);
+    free(cc_nr);
+    return;
 }
 
 int testMAC()
 {
-	PrintAndLog("[+] Testing MAC calculation...");
+	prnlog("[+] Testing MAC calculation...");
 
 	//From the "dismantling.IClass" paper:
 	uint8_t cc_nr[] = {0xFE,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0,0,0,0};
@@ -232,15 +237,15 @@ int testMAC()
 	uint8_t correct_MAC[4] = {0x1d,0x49,0xC9,0xDA};
 
 	uint8_t calculated_mac[4] = {0};
-	doMAC(cc_nr, div_key, calculated_mac);
+    doMAC(cc_nr, 12,div_key, calculated_mac);
 
 	if(memcmp(calculated_mac, correct_MAC,4) == 0)
 	{
-		PrintAndLog("[+] MAC calculation OK!");
+		prnlog("[+] MAC calculation OK!");
 
 	}else
 	{
-		PrintAndLog("[+] FAILED: MAC calculation failed:");
+		prnlog("[+] FAILED: MAC calculation failed:");
 		printarr("    Calculated_MAC", calculated_mac, 4);
 		printarr("    Correct_MAC   ", correct_MAC, 4);
 		return 1;

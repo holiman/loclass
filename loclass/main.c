@@ -44,27 +44,27 @@ int unitTests()
 }
 int showHelp()
 {
-	PrintAndLog("Usage: iclazz [options]");
-	PrintAndLog("Options:");
-	PrintAndLog("-t                 Perform self-test");
-	PrintAndLog("-h                 Show this help");
-	PrintAndLog("-f <filename>      Bruteforce iclass dumpfile");
-	PrintAndLog("                   An iclass dumpfile is assumed to consist of an arbitrary number of malicious CSNs, and their protocol responses");
-	PrintAndLog("                   The the binary format of the file is expected to be as follows: ");
-	PrintAndLog("                   <8 byte CSN><8 byte CC><4 byte NR><4 byte MAC>");
-	PrintAndLog("                   <8 byte CSN><8 byte CC><4 byte NR><4 byte MAC>");
-	PrintAndLog("                   <8 byte CSN><8 byte CC><4 byte NR><4 byte MAC>");
-	PrintAndLog("                  ... totalling N*24 bytes");
-	PrintAndLog("                  Check iclass_dump.bin for an example");
+	prnlog("Usage: iclazz [options]");
+	prnlog("Options:");
+	prnlog("-t                 Perform self-test");
+	prnlog("-h                 Show this help");
+	prnlog("-f <filename>      Bruteforce iclass dumpfile");
+	prnlog("                   An iclass dumpfile is assumed to consist of an arbitrary number of malicious CSNs, and their protocol responses");
+	prnlog("                   The the binary format of the file is expected to be as follows: ");
+	prnlog("                   <8 byte CSN><8 byte CC><4 byte NR><4 byte MAC>");
+	prnlog("                   <8 byte CSN><8 byte CC><4 byte NR><4 byte MAC>");
+	prnlog("                   <8 byte CSN><8 byte CC><4 byte NR><4 byte MAC>");
+	prnlog("                  ... totalling N*24 bytes");
+	prnlog("                  Check iclass_dump.bin for an example");
 
 	return 0;
 }
 
 int main (int argc, char **argv)
 {
-	PrintAndLog("IClass Cipher version 1.2, Copyright (C) 2014 Martin Holst Swende\n");
-	PrintAndLog("Comes with ABSOLUTELY NO WARRANTY");
-	PrintAndLog("This is free software, and you are welcome to use, abuse and repackage, please keep the credits\n");
+	prnlog("IClass Cipher version 1.2, Copyright (C) 2014 Martin Holst Swende\n");
+	prnlog("Comes with ABSOLUTELY NO WARRANTY");
+	prnlog("This is free software, and you are welcome to use, abuse and repackage, please keep the credits\n");
 	char *fileName = NULL;
 	int c;
 	while ((c = getopt (argc, argv, "thf:")) != -1)

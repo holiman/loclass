@@ -21,11 +21,11 @@
  * along with IClassCipher.  If not, see <http://www.gnu.org/licenses/>.
  ****************************************************************************/
 
-#include <cipherutils.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include "fileutils.h"
+#include "cipherutils.h"
 /**
  *
  * @brief Return and remove the first bit (x0) in the stream : <x0 x1 x2 x3 ... xn >
@@ -100,7 +100,7 @@ int numBits(BitstreamOut *stream)
 	return stream->numbits;
 }
 
-void num_to_bytes(uint64_t n, size_t len, uint8_t* dest)
+void x_num_to_bytes(uint64_t n, size_t len, uint8_t* dest)
 {
 	while (len--) {
 		dest[len] = (uint8_t) n;
@@ -108,7 +108,7 @@ void num_to_bytes(uint64_t n, size_t len, uint8_t* dest)
 	}
 }
 
-uint64_t bytes_to_num(uint8_t* src, size_t len)
+uint64_t x_bytes_to_num(uint8_t* src, size_t len)
 {
 	uint64_t num = 0;
 	while (len--)
@@ -155,7 +155,7 @@ void printarr(char * name, uint8_t* arr, int len)
 		cx += snprintf(output+cx,outsize-cx,"0x%02x,",*(arr+i));//5 bytes per byte
 	}
 	cx += snprintf(output+cx,outsize-cx,"};");
-	PrintAndLog(output);
+	prnlog(output);
 }
 
 void printvar(char * name, uint8_t* arr, int len)
@@ -172,7 +172,7 @@ void printvar(char * name, uint8_t* arr, int len)
 		cx += snprintf(output+cx,outsize-cx,"%02x",*(arr+i));//2 bytes per byte
 	}
 
-	PrintAndLog(output);
+	prnlog(output);
 }
 
 void printarr_human_readable(char * title, uint8_t* arr, int len)
@@ -191,7 +191,7 @@ void printarr_human_readable(char * title, uint8_t* arr, int len)
 			cx += snprintf(output+cx,outsize-cx,"\n%02x| ", i );
 		cx += snprintf(output+cx,outsize-cx, "%02x ",*(arr+i));
 	}
-	PrintAndLog(output);
+	prnlog(output);
 }
 
 //-----------------------------
@@ -214,14 +214,14 @@ int testBitStream()
 	}
 	if(memcmp(input, output, sizeof(input)) == 0)
 	{
-		PrintAndLog("    Bitstream test 1 ok");
+		prnlog("    Bitstream test 1 ok");
 	}else
 	{
-		PrintAndLog("    Bitstream test 1 failed");
+		prnlog("    Bitstream test 1 failed");
 		uint8_t i;
 		for(i = 0 ; i < sizeof(input) ; i++)
 		{
-			PrintAndLog("    IN %02x, OUT %02x", input[i], output[i]);
+			prnlog("    IN %02x, OUT %02x", input[i], output[i]);
 		}
 		return 1;
 	}
@@ -248,14 +248,14 @@ int testReversedBitstream()
 	}
 	if(memcmp(input, output, sizeof(input)) == 0)
 	{
-		PrintAndLog("    Bitstream test 2 ok");
+		prnlog("    Bitstream test 2 ok");
 	}else
 	{
-		PrintAndLog("    Bitstream test 2 failed");
+		prnlog("    Bitstream test 2 failed");
 		uint8_t i;
 		for(i = 0 ; i < sizeof(input) ; i++)
 		{
-			PrintAndLog("    IN %02x, MIDDLE: %02x, OUT %02x", input[i],reverse[i], output[i]);
+			prnlog("    IN %02x, MIDDLE: %02x, OUT %02x", input[i],reverse[i], output[i]);
 		}
 		return 1;
 	}
@@ -265,7 +265,7 @@ int testReversedBitstream()
 
 int testCipherUtils(void)
 {
-	PrintAndLog("[+] Testing some internals...");
+	prnlog("[+] Testing some internals...");
 	int retval = 0;
 	retval |= testBitStream();
 	retval |= testReversedBitstream();

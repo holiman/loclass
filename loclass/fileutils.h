@@ -29,5 +29,5 @@ int loadFile(const char *fileName, void* data, size_t datalen);
  * write also to a logfile. When doing so, just delete this function.
  * @param fmt
  */
-void PrintAndLog(char *fmt, ...);
+void prnlog(char *fmt, ...);
 #endif // FILEUTILS_H

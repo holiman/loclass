@@ -53,11 +53,12 @@ From "Dismantling iclass":
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
-#include <cipherutils.h>
 #include <stdio.h>
-#include <des.h>
 #include <inttypes.h>
 #include "fileutils.h"
+#include "cipherutils.h"
+#include "des.h"
+
 uint8_t pi[35] = {0x0F,0x17,0x1B,0x1D,0x1E,0x27,0x2B,0x2D,0x2E,0x33,0x35,0x39,0x36,0x3A,0x3C,0x47,0x4B,0x4D,0x4E,0x53,0x55,0x56,0x59,0x5A,0x5C,0x63,0x65,0x66,0x69,0x6A,0x6C,0x71,0x72,0x74,0x78};
 
 static des_context ctx_enc = {DES_ENCRYPT,{0}};
@@ -230,7 +231,7 @@ void printbegin()
 	if(debug_print <2)
 		return ;
 
-	PrintAndLog("          | x| y|z0|z1|z2|z3|z4|z5|z6|z7|");
+	prnlog("          | x| y|z0|z1|z2|z3|z4|z5|z6|z7|");
 }
 
 void printState(char* desc, uint64_t c)
@@ -304,7 +305,7 @@ void hash0(uint64_t c, uint8_t k[8])
 		p = ~p;
 	}
 
-	if(debug_print >= 2) PrintAndLog("p:%02x", p);
+	if(debug_print >= 2) prnlog("p:%02x", p);
 
 	BitstreamIn p_in = { &p, 8,0 };
 	uint8_t outbuffer[] = {0,0,0,0,0,0,0,0};
@@ -315,7 +316,7 @@ void hash0(uint64_t c, uint8_t k[8])
 	// if all went well
 	//Shift z-values down onto the lower segment
 
-	uint64_t zTilde = bytes_to_num(outbuffer,8);
+    uint64_t zTilde = x_bytes_to_num(outbuffer,8);
 
 	zTilde >>= 16;
 
@@ -389,8 +390,8 @@ void diversifyKey(uint8_t csn[8], uint8_t key[8], uint8_t div_key[8])
 	des_crypt_ecb(&ctx_enc,csn, crypted_csn);
 
 	//Calculate HASH0(DES))
-	uint64_t crypt_csn = bytes_to_num(crypted_csn, 8);
-	//uint64_t crypted_csn_swapped = swapZvalues(crypt_csn);
+        uint64_t crypt_csn = x_bytes_to_num(crypted_csn, 8);
+	uint64_t crypted_csn_swapped = swapZvalues(crypt_csn);
 
 	hash0(crypt_csn,div_key);
 }
@@ -429,7 +430,7 @@ void testPermute()
 
 	permute(&p_in, x,0,4, &out);
 
-	uint64_t permuted = bytes_to_num(outbuffer,8);
+    uint64_t permuted = x_bytes_to_num(outbuffer,8);
 	//printf("zTilde 0x%"PRIX64"\n", zTilde);
 	permuted >>= 16;
 
@@ -465,7 +466,7 @@ int testDES(Testcase testcase, des_context ctx_enc, des_context ctx_dec)
 	if(memcmp(testcase.uid,decrypted,8) != 0)
 	{
 		//Decryption fail
-		PrintAndLog("Encryption <-> Decryption FAIL");
+		prnlog("Encryption <-> Decryption FAIL");
 		printarr("Input", testcase.uid, 8);
 		printarr("Decrypted", decrypted, 8);
 		retval = 1;
@@ -474,18 +475,18 @@ int testDES(Testcase testcase, des_context ctx_enc, des_context ctx_dec)
 	if(memcmp(des_encrypted_csn,testcase.t_key,8) != 0)
 	{
 		//Encryption fail
-		PrintAndLog("Encryption != Expected result");
+		prnlog("Encryption != Expected result");
 		printarr("Output", des_encrypted_csn, 8);
 		printarr("Expected", testcase.t_key, 8);
 		retval = 1;
 	}
-	uint64_t crypted_csn = bytes_to_num(des_encrypted_csn,8);
+    uint64_t crypted_csn = x_bytes_to_num(des_encrypted_csn,8);
 	hash0(crypted_csn, div_key);
 
 	if(memcmp(div_key, testcase.div_key ,8) != 0)
 	{
 		//Key diversification fail
-		PrintAndLog("Div key != expected result");
+		prnlog("Div key != expected result");
 		printarr("  csn   ", testcase.uid,8);
 		printarr("{csn}   ", des_encrypted_csn,8);
 		printarr("hash0   ", div_key, 8);
@@ -515,15 +516,15 @@ void des_checkParity(uint8_t* key)
 		if(parity != (key[i] & 0x1))
 		{
 			fails++;
-			PrintAndLog("[+] parity1 fail, byte %d [%02x] was %d, should be %d",i,key[i],(key[i] & 0x1),parity);
+			prnlog("[+] parity1 fail, byte %d [%02x] was %d, should be %d",i,key[i],(key[i] & 0x1),parity);
 		}
 	}
 	if(fails)
 	{
-		PrintAndLog("[+] parity fails: %d", fails);
+		prnlog("[+] parity fails: %d", fails);
 	}else
 	{
-		PrintAndLog("[+] Key syntax is with parity bits inside each byte");
+		prnlog("[+] Key syntax is with parity bits inside each byte");
 	}
 }
 
@@ -606,17 +607,17 @@ int testKeyDiversificationWithMasterkeyTestcases()
 	int i;
 
 	uint8_t empty[8]={0};
-	PrintAndLog("[+} Testing encryption/decryption");
+	prnlog("[+} Testing encryption/decryption");
 
 	for (i = 0;  memcmp(testcases+i,empty,8) ; i++) {
 		error += testDES(testcases[i],ctx_enc, ctx_dec);
 	}
 	if(error)
 	{
-		PrintAndLog("[+] %d errors occurred (%d testcases)", error, i);
+		prnlog("[+] %d errors occurred (%d testcases)", error, i);
 	}else
 	{
-		PrintAndLog("[+] Hashing seems to work (%d testcases)", i);
+		prnlog("[+] Hashing seems to work (%d testcases)", i);
 	}
 	return error;
 }
@@ -631,7 +632,7 @@ uint64_t testCryptedCSN(uint64_t crypted_csn, uint64_t expected)
 {
 	int retval = 0;
 	uint8_t result[8] = {0};
-	if(debug_print) PrintAndLog("debug_print %d", debug_print);
+	if(debug_print) prnlog("debug_print %d", debug_print);
 	if(debug_print) print64bits("    {csn}      ", crypted_csn );
 
 	uint64_t crypted_csn_swapped = swapZvalues(crypted_csn);
@@ -639,21 +640,21 @@ uint64_t testCryptedCSN(uint64_t crypted_csn, uint64_t expected)
 	if(debug_print) print64bits("    {csn-revz} ", crypted_csn_swapped);
 
 	hash0(crypted_csn, result);
-	uint64_t resultbyte = bytes_to_num(result,8 );
+    uint64_t resultbyte = x_bytes_to_num(result,8 );
 	if(debug_print) print64bits("    hash0      " , resultbyte );
 
 	if(resultbyte != expected )
 	{
 
 		if(debug_print) {
-			PrintAndLog("\n[+] FAIL!");
+			prnlog("\n[+] FAIL!");
 			print64bits("    expected       " ,  expected );
 		}
 		retval = 1;
 
 	}else
 	{
-		if(debug_print) PrintAndLog(" [OK]");
+		if(debug_print) prnlog(" [OK]");
 	}
 	return retval;
 }
@@ -664,17 +665,17 @@ int testDES2(uint64_t csn, uint64_t expected)
 	uint8_t input[8] = {0};
 
 	print64bits("   csn ", csn);
-	num_to_bytes(csn, 8,input);
+    x_num_to_bytes(csn, 8,input);
 
 	des_crypt_ecb(&ctx_enc,input, result);
 
-	uint64_t crypt_csn = bytes_to_num(result, 8);
+    uint64_t crypt_csn = x_bytes_to_num(result, 8);
 	print64bits("   {csn}    ", crypt_csn );
 	print64bits("   expected ", expected );
 
 	if( expected == crypt_csn )
 	{
-		PrintAndLog("[+] OK");
+		prnlog("[+] OK");
 		return 0;
 	}else
 	{
@@ -692,15 +693,15 @@ int doTestsWithKnownInputs()
 
 	// KSel from http://www.proxmark.org/forum/viewtopic.php?pid=10977#p10977
 	int errors = 0;
-	PrintAndLog("[+] Testing DES encryption");
+	prnlog("[+] Testing DES encryption");
 //	uint8_t key[8] = {0x6c,0x8d,0x44,0xf9,0x2a,0x2d,0x01,0xbf};
-	PrintAndLog("[+] Testing foo");
+	prnlog("[+] Testing foo");
 	uint8_t key[8] = {0x6c,0x8d,0x44,0xf9,0x2a,0x2d,0x01,0xbf};
 
 	des_setkey_enc( &ctx_enc, key);
 	testDES2(0xbbbbaaaabbbbeeee,0xd6ad3ca619659e6b);
 
-	PrintAndLog("[+] Testing hashing algorithm");
+	prnlog("[+] Testing hashing algorithm");
 
 	errors += testCryptedCSN(0x0102030405060708,0x0bdd6512073c460a);
 	errors += testCryptedCSN(0x1020304050607080,0x0208211405f3381f);
@@ -714,10 +715,10 @@ int doTestsWithKnownInputs()
 
 	if(errors)
 	{
-		PrintAndLog("[+] %d errors occurred (9 testcases)", errors);
+		prnlog("[+] %d errors occurred (9 testcases)", errors);
 	}else
 	{
-		PrintAndLog("[+] Hashing seems to work (9 testcases)" );
+		prnlog("[+] Hashing seems to work (9 testcases)" );
 	}
 	return errors;
 }
@@ -741,11 +742,11 @@ int doKeyTests(uint8_t debuglevel)
 {
 	debug_print = debuglevel;
 
-	PrintAndLog("[+] Checking if the master key is present (iclass_key.bin)...");
+	prnlog("[+] Checking if the master key is present (iclass_key.bin)...");
 	uint8_t key[8] = {0};
 	if(readKeyFile(key))
 	{
-		PrintAndLog("[+] Master key not present, will not be able to do all testcases");
+		prnlog("[+] Master key not present, will not be able to do all testcases");
 	}else
 	{
 
@@ -757,21 +758,21 @@ int doKeyTests(uint8_t debuglevel)
 
 		if(j != 185)
 		{
-			PrintAndLog("[+] A key was loaded, but it does not seem to be the correct one. Aborting these tests");
+			prnlog("[+] A key was loaded, but it does not seem to be the correct one. Aborting these tests");
 		}else
 		{
-			PrintAndLog("[+] Key present");
+			prnlog("[+] Key present");
 
-			PrintAndLog("[+] Checking key parity...");
+			prnlog("[+] Checking key parity...");
 			des_checkParity(key);
 			des_setkey_enc( &ctx_enc, key);
 			des_setkey_dec( &ctx_dec, key);
 			// Test hashing functions
-			PrintAndLog("[+] The following tests require the correct 8-byte master key");
+			prnlog("[+] The following tests require the correct 8-byte master key");
 			testKeyDiversificationWithMasterkeyTestcases();
 		}
 	}
-	PrintAndLog("[+] Testing key diversification with non-sensitive keys...");
+	prnlog("[+] Testing key diversification with non-sensitive keys...");
 	doTestsWithKnownInputs();
 	return 0;
 }
