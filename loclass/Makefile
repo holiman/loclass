@@ -49,14 +49,16 @@ SOURCES       = main.c \
 		ikeys.c \
 		des.c \
 		elite_crack.c \
-		fileutils.c 
+		fileutils.c \
+		hash1_brute.c
 OBJECTS       = main.o \
 		cipher.o \
 		cipherutils.o \
 		ikeys.o \
 		des.o \
 		elite_crack.o \
-		fileutils.o
+		fileutils.o\
+		hash1_brute.o
 DIST          = /usr/share/qt4/mkspecs/common/unix.conf \
 		/usr/share/qt4/mkspecs/common/linux.conf \
 		/usr/share/qt4/mkspecs/common/gcc-base.conf \
