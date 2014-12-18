@@ -38,7 +38,6 @@
 
 
 #include <stdio.h>
-#include <cipherutils.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
