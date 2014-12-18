@@ -49,21 +49,26 @@
 #include "ikeys.h"
 #include "fileutils.h"
 #include "elite_crack.h"
-
+#include "hash1_brute.h"
 int unitTests()
 {
 	int errors = testCipherUtils();
 	errors += testMAC();
 	errors += doKeyTests(0);
 	errors += testElite();
+    if(errors)
+    {
+        prnlog("OBS! There were errors!!!");
+    }
 	return errors;
 }
 int showHelp()
 {
-	prnlog("Usage: iclazz [options]");
+    prnlog("Usage: loclass [options]");
 	prnlog("Options:");
-	prnlog("-t                 Perform self-test");
-	prnlog("-h                 Show this help");
+    prnlog("-t                 Perform self-test");
+    prnlog("-h                 Show this help");
+    prnlog("-d <CSN> -k <key>  Calculate diversified key, based on CSN and K_CUS. Key should be on standard NIST-format, not iclass format ");
 	prnlog("-f <filename>      Bruteforce iclass dumpfile");
 	prnlog("                   An iclass dumpfile is assumed to consist of an arbitrary number of malicious CSNs, and their protocol responses");
 	prnlog("                   The the binary format of the file is expected to be as follows: ");
@@ -96,9 +101,13 @@ int main (int argc, char **argv)
 
 	char *fileName = NULL;
 	int c;
-	while ((c = getopt (argc, argv, "thf:")) != -1)
+
+    while ((c = getopt (argc, argv, "xthf:")) != -1)
 	  switch (c)
 		{
+        case  'x':
+            brute_hash1();
+            return 0;
 		case 't':
 		  return unitTests();
 		case 'h':
@@ -119,7 +128,9 @@ int main (int argc, char **argv)
 		//default:
 		  //showHelp();
 		}
-	showHelp();
+
+    showHelp();
+
 	return 0;
 }
 
