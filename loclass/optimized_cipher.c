@@ -36,6 +36,29 @@
  * 
  ****************************************************************************/
 
+/**
+
+  This file contains an optimized version of the MAC-calculation algorithm. Some measurements on
+  a std laptop showed it runs in about 1/3 of the time:
+
+	Std: 0.428962
+	Opt: 0.151609
+
+  Additionally, it is self-reliant, not requiring e.g. bitstreams from the cipherutils, thus can
+  be easily dropped into a code base.
+
+  The optimizations have been performed in the following steps:
+  * Parameters passed by reference instead of by value.
+  * Iteration instead of recursion, un-nesting recursive loops into for-loops.
+  * Handling of bytes instead of individual bits, for less shuffling and masking
+  * Less creation of "objects", structs, and instead reuse of alloc:ed memory
+  * Inlining some functions via #define:s
+
+  As a consequence, this implementation is less generic. Also, I haven't bothered documenting this.
+  For a thorough documentation, check out the MAC-calculation within cipher.c instead.
+
+  -- MHS 2015
+**/
 
 #include "optimized_cipher.h"
 #include <stdio.h>
@@ -192,12 +215,17 @@ void opt_MAC(uint8_t* k, uint8_t* input, uint8_t* out)
 	//printf("\noutp ");
 	opt_output(k,&_init, out);
 }
-
+uint8_t rev_byte(uint8_t b) {
+	b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
+	b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
+	b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
+   return b;
+}
 void opt_reverse_arraybytecpy(uint8_t* dest, uint8_t *src, size_t len)
 {
 	uint8_t i;
 	for( i =0; i< len ; i++)
-		dest[i] = reversebytes(src[i]);
+		dest[i] = rev_byte(src[i]);
 }
 
 void opt_doMAC(uint8_t *cc_nr_p, uint8_t *div_key_p, uint8_t mac[4])
