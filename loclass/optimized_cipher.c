@@ -129,10 +129,9 @@ void opt_successor(uint8_t* k, State *s, bool y, State* successor)
 	successor->b = s->b >> 1;
 	successor->b |= (opt_B(s) ^ (s->r & 0x1)) << 7;
 
-	uint8_t kk = (k[opt__select(Tt,y,s->r)] ^ successor->b) + s->l;
+	successor->r = (k[opt__select(Tt,y,s->r)] ^ successor->b) + s->l ;
+	successor->l = successor->r+s->r;
 
-	successor->l = kk+s->r;
-	successor->r = kk ;
 }
 
 void opt_suc(uint8_t* k,State* s, uint8_t *in)
