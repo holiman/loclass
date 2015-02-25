@@ -55,7 +55,10 @@ int unitTests()
 	errors += testMAC();
 	errors += doKeyTests(0);
 	errors += testElite();
-    if(errors)
+	errors += testOptMAC();
+
+
+	if(errors)
     {
         prnlog("OBS! There were errors!!!");
     }
@@ -96,7 +99,6 @@ int main (int argc, char **argv)
 	prnlog("AND MAY EXPOSE YOU TO AN INFRINGEMENT ACTION FROM THOSE PARTIES. ");
 	prnlog("");
 	prnlog("THIS TOOL SHOULD NEVER BE USED TO INFRINGE PATENTS OR INTELLECTUAL PROPERTY RIGHTS. ");
-
 
 	char *fileName = NULL;
 	int c;

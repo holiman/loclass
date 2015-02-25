@@ -46,7 +46,7 @@
 #include <stdint.h>
 #include <time.h>
 #include "fileutils.h"
-uint8_t keytable[] = { 0,0,0,0,0,0,0,0};
+#include "optimized_cipher.h"
 
 /**
 * Definition 1 (Cipher state). A cipher state of iClass s is an element of F 40/2
@@ -70,25 +70,26 @@ typedef struct {
 **/
 bool T(State state)
 {
-	bool x0 = state.t & 0x8000;
-	bool x1 = state.t & 0x4000;
-	bool x5 = state.t & 0x0400;
-	bool x7 = state.t & 0x0100;
-	bool x10 = state.t & 0x0020;
-	bool x11 = state.t & 0x0010;
-	bool x14 = state.t & 0x0002;
-	bool x15 = state.t & 0x0001;
+	bool x0 = state.t &  0x8000;// 15: 1000 0000 0000 0000
+	bool x1 = state.t &  0x4000;// 14
+	bool x5 = state.t &  0x0400;// 10 : 0000 0100 0000 0000
+	bool x7 = state.t &  0x0100;// 8
+	bool x10 = state.t & 0x0020;// 5
+	bool x11 = state.t & 0x0010;// 4: //0000 0000 0001 0000
+	bool x14 = state.t & 0x0002;// 1
+	bool x15 = state.t & 0x0001;// 0
 	return x0 ^ x1 ^ x5 ^ x7 ^ x10 ^ x11 ^ x14 ^ x15;
 }
+
 /**
 *	Similarly, the feedback function for the bottom register B : F 8/2 → F 2 is defined as
 *	B(x 0 x 1 . . . x 7 ) = x 1 ⊕ x 2 ⊕ x 3 ⊕ x 7 .
 **/
 bool B(State state)
 {
-	bool x1 = state.b & 0x40;
-	bool x2 = state.b & 0x20;
-	bool x3 = state.b & 0x10;
+	bool x1 = state.b & 0x40;//0100 0000
+	bool x2 = state.b & 0x20;//0010 0000
+	bool x3 = state.b & 0x10;//0001 0000
 	bool x7 = state.b & 0x01;
 
 	return x1 ^ x2 ^ x3 ^ x7;
@@ -241,6 +242,44 @@ void doMAC(uint8_t *cc_nr_p, int length, uint8_t *div_key_p, uint8_t mac[4])
     free(cc_nr);
     return;
 }
+
+
+
+int testOptMAC()
+{
+	//From the "dismantling.IClass" paper:
+	uint8_t cc_nr[] = {0xFE,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0,0,0,0};
+	//From the paper
+	uint8_t div_key[8] = {0xE0,0x33,0xCA,0x41,0x9A,0xEE,0x43,0xF9};
+	uint8_t correct_MAC[4] = {0x1d,0x49,0xC9,0xDA};
+	uint8_t calculated_mac[4] = {0};
+	uint32_t n =0 ;
+
+	clock_t t1 = clock();
+
+	for(n=0 ; n < 40000; n++)
+	   doMAC(cc_nr, 12,div_key, calculated_mac);
+	clock_t t2 = clock();
+	if(memcmp(calculated_mac, correct_MAC,4) == 0)
+		prnlog("[+] MAC calculation OK!");
+	clock_t t3 = clock();
+	for(n=0 ; n < 40000; n++)
+	   opt_doMAC(cc_nr,div_key, calculated_mac);
+
+	clock_t t4 = clock();
+
+	if(memcmp(calculated_mac, correct_MAC,4) == 0)
+		prnlog("[+] opt-MAC calculation OK!");
+	else
+		prnlog("[+] opt-MAC CALCULATION FAIL!!");
+
+	float diff1 = (((float)t2 - (float)t1) / CLOCKS_PER_SEC );
+	float diff2 = (((float)t4 - (float)t3) / CLOCKS_PER_SEC );
+
+	prnlog("\nStd: %f\nOpt: %f\n----",diff1, diff2);
+	return 0;
+}
+
 
 int testMAC()
 {

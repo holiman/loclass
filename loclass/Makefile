@@ -1,7 +1,10 @@
 
 ####### Compiler, tools and options
 
+
 CC            = gcc
+#CC 				=i686-w64-mingw32-gcc
+
 CXX           = g++
 
 DEFINES       = 
@@ -38,6 +41,7 @@ OBJECTS_DIR   = ./
 ####### Files
 
 SOURCES       = main.c \
+		optimized_cipher.c\
 		cipher.c \
 		cipherutils.c \
 		ikeys.c \
@@ -46,6 +50,7 @@ SOURCES       = main.c \
 		fileutils.c \
 		hash1_brute.c
 OBJECTS       = main.o \
+		optimized_cipher.o\
 		cipher.o \
 		cipherutils.o \
 		ikeys.o \
@@ -53,30 +58,7 @@ OBJECTS       = main.o \
 		elite_crack.o \
 		fileutils.o\
 		hash1_brute.o
-#DIST          = /usr/share/qt4/mkspecs/common/unix.conf \
-#		/usr/share/qt4/mkspecs/common/linux.conf \
-#		/usr/share/qt4/mkspecs/common/gcc-base.conf \
-#		/usr/share/qt4/mkspecs/common/gcc-base-unix.conf \
-#		/usr/share/qt4/mkspecs/common/g++-base.conf \
-#		/usr/share/qt4/mkspecs/common/g++-unix.conf \
-#		/usr/share/qt4/mkspecs/qconfig.pri \
-#		/usr/share/qt4/mkspecs/features/qt_functions.prf \
-#		/usr/share/qt4/mkspecs/features/qt_config.prf \
-#		/usr/share/qt4/mkspecs/features/exclusive_builds.prf \
-#		/usr/share/qt4/mkspecs/features/default_pre.prf \
-#		/usr/share/qt4/mkspecs/features/debug.prf \
-#		/usr/share/qt4/mkspecs/features/default_post.prf \
-#		/usr/share/qt4/mkspecs/features/declarative_debug.prf \
-#		/usr/share/qt4/mkspecs/features/unix/gdb_dwarf_index.prf \
-#		/usr/share/qt4/mkspecs/features/warn_on.prf \
-#		/usr/share/qt4/mkspecs/features/resources.prf \
-#		/usr/share/qt4/mkspecs/features/uic.prf \
-#		/usr/share/qt4/mkspecs/features/yacc.prf \
-#		/usr/share/qt4/mkspecs/features/lex.prf \
-#		/usr/share/qt4/mkspecs/features/include_source_dir.prf \
-#		loclass.pro
-#QMAKE_TARGET  = loclass
-#DESTDIR       = 
+
 TARGET        = loclass
 
 ####### Implicit rules
@@ -102,56 +84,13 @@ TARGET        = loclass
 
 all: Makefile $(TARGET)
 
+
+
+
 $(TARGET):  $(OBJECTS)  
 	$(LINK) $(LFLAGS) -o $(TARGET) $(OBJECTS) $(OBJCOMP) $(LIBS)
 	{ test -n "$(DESTDIR)" && DESTDIR="$(DESTDIR)" || DESTDIR=.; } && test $$(gdb --version | sed -e 's,[^0-9]\+\([0-9]\)\.\([0-9]\).*,\1\2,;q') -gt 72 && gdb --nx --batch --quiet -ex 'set confirm off' -ex "save gdb-index $$DESTDIR" -ex quit '$(TARGET)' && test -f $(TARGET).gdb-index && objcopy --add-section '.gdb_index=$(TARGET).gdb-index' --set-section-flags '.gdb_index=readonly' '$(TARGET)' '$(TARGET)' && rm -f $(TARGET).gdb-index || true
 
-#Makefile: loclass.pro  /usr/share/qt4/mkspecs/linux-g++-64/qmake.conf /usr/share/qt4/mkspecs/common/unix.conf \
-#		/usr/share/qt4/mkspecs/common/linux.conf \
-#		/usr/share/qt4/mkspecs/common/gcc-base.conf \
-#		/usr/share/qt4/mkspecs/common/gcc-base-unix.conf \
-#		/usr/share/qt4/mkspecs/common/g++-base.conf \
-#		/usr/share/qt4/mkspecs/common/g++-unix.conf \
-#		/usr/share/qt4/mkspecs/qconfig.pri \
-#		/usr/share/qt4/mkspecs/features/qt_functions.prf \
-#		/usr/share/qt4/mkspecs/features/qt_config.prf \
-#		/usr/share/qt4/mkspecs/features/exclusive_builds.prf \
-#		/usr/share/qt4/mkspecs/features/default_pre.prf \
-#		/usr/share/qt4/mkspecs/features/debug.prf \
-#		/usr/share/qt4/mkspecs/features/default_post.prf \
-#		/usr/share/qt4/mkspecs/features/declarative_debug.prf \
-#		/usr/share/qt4/mkspecs/features/unix/gdb_dwarf_index.prf \
-#		/usr/share/qt4/mkspecs/features/warn_on.prf \
-#		/usr/share/qt4/mkspecs/features/resources.prf \
-#		/usr/share/qt4/mkspecs/features/uic.prf \
-#		/usr/share/qt4/mkspecs/features/yacc.prf \
-#		/usr/share/qt4/mkspecs/features/lex.prf \
-#		/usr/share/qt4/mkspecs/features/include_source_dir.prf
-#	$(QMAKE) -spec /usr/share/qt4/mkspecs/linux-g++-64 CONFIG+=debug CONFIG+=declarative_debug -o Makefile loclass.pro
-#/usr/share/qt4/mkspecs/common/unix.conf:
-#/usr/share/qt4/mkspecs/common/linux.conf:
-#/usr/share/qt4/mkspecs/common/gcc-base.conf:
-#/usr/share/qt4/mkspecs/common/gcc-base-unix.conf:
-#/usr/share/qt4/mkspecs/common/g++-base.conf:
-#/usr/share/qt4/mkspecs/common/g++-unix.conf:
-#/usr/share/qt4/mkspecs/qconfig.pri:
-#/usr/share/qt4/mkspecs/features/qt_functions.prf:
-#/usr/share/qt4/mkspecs/features/qt_config.prf:
-#/usr/share/qt4/mkspecs/features/exclusive_builds.prf:
-#/usr/share/qt4/mkspecs/features/default_pre.prf:
-#/usr/share/qt4/mkspecs/features/debug.prf:
-#/usr/share/qt4/mkspecs/features/default_post.prf:
-#/usr/share/qt4/mkspecs/features/declarative_debug.prf:
-#/usr/share/qt4/mkspecs/features/unix/gdb_dwarf_index.prf:
-#/usr/share/qt4/mkspecs/features/warn_on.prf:
-#/usr/share/qt4/mkspecs/features/resources.prf:
-#/usr/share/qt4/mkspecs/features/uic.prf:
-#/usr/share/qt4/mkspecs/features/yacc.prf:
-#/usr/share/qt4/mkspecs/features/lex.prf:
-#/usr/share/qt4/mkspecs/features/include_source_dir.prf:
-#qmake:  FORCE
-#	@$(QMAKE) -spec /usr/share/qt4/mkspecs/linux-g++-64 CONFIG+=debug CONFIG+=declarative_debug -o Makefile loclass.pro
-#
 dist: 
 	@$(CHK_DIR_EXISTS) .tmp/loclass1.0.0 || $(MKDIR) .tmp/loclass1.0.0 
 	$(COPY_FILE) --parents $(SOURCES) $(DIST) .tmp/loclass1.0.0/ && (cd `dirname .tmp/loclass1.0.0` && $(TAR) loclass1.0.0.tar loclass1.0.0 && $(COMPRESS) loclass1.0.0.tar) && $(MOVE) `dirname .tmp/loclass1.0.0`/loclass1.0.0.tar.gz . && $(DEL_FILE) -r .tmp/loclass1.0.0
@@ -196,7 +135,8 @@ main.o: main.c cipherutils.h \
 
 cipher.o: cipher.c cipher.h \
 		cipherutils.h \
-		fileutils.h
+		fileutils.h\
+		optimized_cipher.h
 	$(CC) -c $(CFLAGS) $(INCPATH) -o cipher.o cipher.c
 
 cipherutils.o: cipherutils.c cipherutils.h \
@@ -220,6 +160,9 @@ elite_crack.o: elite_crack.c cipherutils.h \
 
 fileutils.o: fileutils.c fileutils.h
 	$(CC) -c $(CFLAGS) $(INCPATH) -o fileutils.o fileutils.c
+
+optimized_cipher.o: optimized_cipher.c optimized_cipher.h
+	$(CC) -c $(CFLAGS) $(INCPATH) -o optimized_cipher.o optimized_cipher.c
 
 ####### Install
 
