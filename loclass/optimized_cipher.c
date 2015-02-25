@@ -88,49 +88,46 @@ typedef struct {
 
 #define opt_B(s) (((s->b >> 6) ^ (s->b >> 5) ^ (s->b >> 4) ^ (s->b)) & 0x1)
 
-uint8_t opt__select(bool x, bool y, uint8_t r)
+#define opt__select(x,y,r)  (4 & (((r & (r << 2)) >> 5) ^ ((r & ~(r << 2)) >> 4) ^ ( (r | r << 2) >> 3)))\
+	|(2 & (((r | r << 2) >> 6) ^ ( (r | r << 2) >> 1) ^ (r >> 5) ^ r ^ ((x^y) << 1)))\
+	|(1 & (((r & ~(r << 2)) >> 4) ^ ((r & (r << 2)) >> 3) ^ r ^ x))
+
+/*
+ * Some background on the expression above can be found here...
+uint8_t xopt__select(bool x, bool y, uint8_t r)
 {
-	uint8_t r0 = r >> 7 ;
-	uint8_t r1 = r >> 6 ;
-	uint8_t r2 = r >> 5 ;
-	uint8_t r3 = r >> 4 ;
-	uint8_t r4 = r >> 3 ;
-	uint8_t r5 = r >> 2 ;
-	uint8_t r6 = r >> 1 ;
-	uint8_t r7 = r;
+	uint8_t r_ls2 = r << 2;
+	uint8_t r_and_ls2 = r & r_ls2;
+	uint8_t r_or_ls2  = r | r_ls2;
 
-	uint8_t z0 = (r0 & r2) ^ (r1 & ~r3) ^ (r2 | r4);
-	uint8_t z1 = (r0 | r2) ^ ( r5 | r7) ^ r1 ^ r6 ^ x ^ y;
-	uint8_t z2 = (r3 & ~r5) ^ (r4 & r6 ) ^ r7 ^ x;
+	//r:      r0 r1 r2 r3 r4 r5 r6 r7
+	//r_ls2:  r2 r3 r4 r5 r6 r7  0  0
+	//                       z0
+	//                          z1
 
-	// The three bitz z0.. z1 are packed into a uint8_t:
-	// 00000ZZZ
-	//Return value is a uint8_t
-	uint8_t retval = (z0 << 2) & 4;
-	retval |= (z1 << 1) & 2;
-	retval |= z2 & 1;
+//	uint8_t z0 = (r0 & r2) ^ (r1 & ~r3) ^ (r2 | r4); // <-- original
+	uint8_t z0 = (r_and_ls2 >> 5) ^ ((r & ~r_ls2) >> 4) ^ ( r_or_ls2 >> 3);
 
-	// Return value 0 <= retval <= 7
-	return retval;
+//	uint8_t z1 = (r0 | r2) ^ ( r5 | r7) ^ r1 ^ r6 ^ x ^ y;  // <-- original
+	uint8_t z1 = (r_or_ls2 >> 6) ^ ( r_or_ls2 >> 1) ^ (r >> 5) ^ r ^ ((x^y) << 1);
+
+//	uint8_t z2 = (r3 & ~r5) ^ (r4 & r6 ) ^ r7 ^ x;  // <-- original
+	uint8_t z2 = ((r & ~r_ls2) >> 4) ^ (r_and_ls2 >> 3) ^ r ^ x;
+
+	return (z0 & 4) | (z1 & 2) | (z2 & 1);
 }
-
-static bool _r0;
-static bool _r4;
-static bool _r7;
+*/
 
 void opt_successor(uint8_t* k, State *s, bool y, State* successor)
 {
-	_r0 = s->r >> 7 & 0x1;
-	_r4 = s->r >> 3 & 0x1;
-	_r7 = s->r & 0x1;
 
-	bool Tt = opt_T(s);
+	uint8_t Tt = 1 & opt_T(s);
 
 	successor->t = (s->t >> 1);
-	successor->t |= (Tt ^ _r0 ^ _r4) << 15;
+	successor->t |= (Tt ^ (s->r >> 7 & 0x1) ^ (s->r >> 3 & 0x1)) << 15;
 
 	successor->b = s->b >> 1;
-	successor->b |= (opt_B(s) ^ _r7) << 7;
+	successor->b |= (opt_B(s) ^ (s->r & 0x1)) << 7;
 
 	uint8_t kk = (k[opt__select(Tt,y,s->r)] ^ successor->b) + s->l;
 
