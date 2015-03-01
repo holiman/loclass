@@ -41,7 +41,8 @@
 #define CIPHER_H
 #include <stdint.h>
 
-void doMAC(uint8_t *cc_nr_p, int length, uint8_t *div_key_p, uint8_t mac[4]);
+void doReaderMAC(uint8_t *cc_nr_p, uint8_t *div_key_p, uint8_t mac[4]);
+void doTagMAC(uint8_t *cc_nr_p, uint8_t *div_key_p, uint8_t mac[4]);
 int testMAC();
 int testOptMAC();
 #endif // CIPHER_H

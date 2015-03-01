@@ -77,7 +77,7 @@ void pushBit( BitstreamOut* stream, bool bit)
 	int bitpos = stream->position & 7;
 	*(stream->buffer+bytepos) |= (bit & 1) <<  (7 - bitpos);
 	stream->position++;
-	stream->numbits++;
+	//stream->numbits++;
 }
 
 /**

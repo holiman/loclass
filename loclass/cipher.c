@@ -55,14 +55,15 @@
 * 	2. the right register r = (r 0 . . . r 7 ) ∈ F 8/2 ;
 * 	3. the top register t = (t 0 . . . t 15 ) ∈ F 16/2 .
 * 	4. the bottom register b = (b 0 . . . b 7 ) ∈ F 8/2 .
-**/
+
+Commented out from here, it's needed and exposed in optimized_cipher.h instead
 typedef struct {
 	uint8_t l;
 	uint8_t r;
 	uint8_t b;
 	uint16_t t;
 } State;
-
+*/
 /**
 *	Definition 2. The feedback function for the top register T : F 16/2 → F 2
 *	is defined as
@@ -214,27 +215,28 @@ State init(uint8_t* k)
 	};
 	return s;
 }
-void MAC(uint8_t* k, BitstreamIn input, BitstreamOut out)
+void MAC(uint8_t* k, BitstreamIn input, BitstreamOut *out)
 {
 	uint8_t zeroes_32[] = {0,0,0,0};
 	BitstreamIn input_32_zeroes = {zeroes_32,sizeof(zeroes_32)*8,0};
 	State initState = suc(k,init(k),&input);
-	output(k,initState,&input_32_zeroes,&out);
+	output(k,initState,&input_32_zeroes,out);
 }
 
-void doMAC(uint8_t *cc_nr_p, int length, uint8_t *div_key_p, uint8_t mac[4])
+void doReaderMAC(uint8_t *cc_nr_p, uint8_t *div_key_p, uint8_t mac[4])
 {
-    uint8_t *cc_nr;
+	int length = 8+4;// CC - NR
+	uint8_t *cc_nr;
     uint8_t div_key[8];
-    cc_nr=(uint8_t*)malloc(length+1);
-    memcpy(cc_nr,cc_nr_p,length);
+	cc_nr=(uint8_t*)malloc(length);
+	memcpy(cc_nr,cc_nr_p,8+4);
     memcpy(div_key,div_key_p,8);
 
     reverse_arraybytes(cc_nr,length);
     BitstreamIn bitstream = {cc_nr,length * 8,0};
-    uint8_t dest []= {0,0,0,0,0,0,0,0};
+	uint8_t dest []= {0,0,0,0};
     BitstreamOut out = { dest, sizeof(dest)*8, 0 };
-    MAC(div_key,bitstream, out);
+	MAC(div_key,bitstream, &out);
     //The output MAC must also be reversed
     reverse_arraybytes(dest, sizeof(dest));
     memcpy(mac, dest, 4);
@@ -242,42 +244,115 @@ void doMAC(uint8_t *cc_nr_p, int length, uint8_t *div_key_p, uint8_t mac[4])
     free(cc_nr);
     return;
 }
+void doTagMAC(uint8_t *cc_nr_p, uint8_t *div_key_p, uint8_t mac[4])
+{
+	int length = 8+4+4;// CC - NR - 32 bits zeroes
+	uint8_t *cc_nr_zeroes;
+	uint8_t div_key[8];
+	cc_nr_zeroes=(uint8_t*)malloc(length);
+	memset(cc_nr_zeroes , 0 , length);
+	memcpy(cc_nr_zeroes,cc_nr_p,8+4);
+	memcpy(div_key,div_key_p,8);
 
+	reverse_arraybytes(cc_nr_zeroes,8+4);
+	BitstreamIn bitstream_in = {cc_nr_zeroes,length * 8,0};
+	uint8_t dest []= {0,0,0,0};
+	BitstreamOut out = { dest, sizeof(dest)*8, 0 };
+	MAC(div_key,bitstream_in, &out);
+	//The output MAC must also be reversed
+	reverse_arraybytes(dest, sizeof(dest));
+	memcpy(mac, dest, 8);
+	//printf("Calculated_MAC\t%02x%02x%02x%02x\n", dest[0],dest[1],dest[2],dest[3]);
+	free(cc_nr_zeroes);
+	return;
+}
 
 
 int testOptMAC()
 {
-	//From the "dismantling.IClass" paper:
-	uint8_t cc_nr[] = {0xFE,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0,0,0,0};
+	int errors = 0;
+
 	//From the paper
 	uint8_t div_key[8] = {0xE0,0x33,0xCA,0x41,0x9A,0xEE,0x43,0xF9};
-	uint8_t correct_MAC[4] = {0x1d,0x49,0xC9,0xDA};
-	uint8_t calculated_mac[4] = {0};
-	uint32_t n =0 ;
 
-	clock_t t1 = clock();
+	prnlog("[+] Testing reader MAC");
+	{
+		//From the "dismantling.IClass" paper:
+		uint8_t cc_nr[] = {0xFE,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0,0,0,0};
+		uint8_t correct_MAC[4] = {0x1d,0x49,0xC9,0xDA};
 
-	for(n=0 ; n < 40000; n++)
-	   doMAC(cc_nr, 12,div_key, calculated_mac);
-	clock_t t2 = clock();
-	if(memcmp(calculated_mac, correct_MAC,4) == 0)
-		prnlog("[+] MAC calculation OK!");
-	clock_t t3 = clock();
-	for(n=0 ; n < 40000; n++)
-	   opt_doMAC(cc_nr,div_key, calculated_mac);
+		uint8_t calculated_mac[4] = {0};
+		uint32_t n =0 ;
 
-	clock_t t4 = clock();
+		clock_t t1 = clock();
 
-	if(memcmp(calculated_mac, correct_MAC,4) == 0)
-		prnlog("[+] opt-MAC calculation OK!");
-	else
-		prnlog("[+] opt-MAC CALCULATION FAIL!!");
+		for(n=0 ; n < 40000; n++)
+		   doReaderMAC(cc_nr,div_key, calculated_mac);
+		clock_t t2 = clock();
+		if(memcmp(calculated_mac, correct_MAC,4) == 0)
+			prnlog("[+] MAC calculation OK!");
+		clock_t t3 = clock();
+		for(n=0 ; n < 40000; n++)
+		   opt_doReaderMAC(cc_nr,div_key, calculated_mac);
+		clock_t t4 = clock();
 
-	float diff1 = (((float)t2 - (float)t1) / CLOCKS_PER_SEC );
-	float diff2 = (((float)t4 - (float)t3) / CLOCKS_PER_SEC );
 
-	prnlog("\nStd: %f\nOpt: %f\n----",diff1, diff2);
-	return 0;
+		if(memcmp(calculated_mac, correct_MAC,4) == 0)
+			prnlog("[+] opt-MAC calculation OK!");
+		else{
+			errors ++;
+			prnlog("[+] opt-MAC CALCULATION FAIL!!");
+		}
+
+		float diff1 = (((float)t2 - (float)t1) / CLOCKS_PER_SEC );
+		float diff2 = (((float)t4 - (float)t3) / CLOCKS_PER_SEC );
+		prnlog("\nStd: %f\nOpt: %f\n----",diff1, diff2);
+
+
+	}
+
+	prnlog("[+] Testing tag MAC");
+	{
+		uint8_t cc_nr[] = {0xFE,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0,0,0,0};
+
+		uint8_t tag_mac_std[8] = {0};
+		uint8_t tag_mac_opt1[8] = {0};
+		uint8_t tag_mac_opt2[8] = {0};
+		doTagMAC(cc_nr,div_key, tag_mac_std);
+		opt_doTagMAC(cc_nr, div_key, tag_mac_opt1);
+		State state = opt_doTagMAC_1(cc_nr,div_key);
+		opt_doTagMAC_2(state, cc_nr+8, tag_mac_opt2, div_key);
+		//printarr("cc_nr", cc_nr, 8);
+		if(memcmp(tag_mac_std, tag_mac_opt1,4) == 0)
+			prnlog("[+] opt tag-mac calc equals tag-mac calc : OK!");
+		else errors++;
+
+		if(memcmp(tag_mac_std, tag_mac_opt2,4) == 0)
+			prnlog("[+] 2-step opt tag-mac calc equals tag-mac calc : OK!");
+		else errors ++;
+		printvar("1-step tag MAC std", tag_mac_std, 4);
+		printvar("1-step tag MAC opt", tag_mac_opt1, 4);
+		printvar("2-step tag MAC opt", tag_mac_opt2, 4);
+		uint32_t n =0;
+		clock_t t1 = clock();
+
+		for(n=0 ; n < 40000; n++)
+		   doTagMAC(cc_nr,div_key, tag_mac_std);
+		clock_t t2 = clock();
+		for(n=0 ; n < 40000; n++)
+			opt_doTagMAC(cc_nr, div_key, tag_mac_opt1);
+		clock_t t3 = clock();
+		for(n=0 ; n < 40000; n++)
+			opt_doTagMAC_2(state, cc_nr+8, tag_mac_opt2, div_key);
+		clock_t t4 = clock();
+		float diff1 = (((float)t2 - (float)t1) / CLOCKS_PER_SEC );
+		float diff2 = (((float)t3 - (float)t2) / CLOCKS_PER_SEC );
+		float diff3 = (((float)t4 - (float)t3) / CLOCKS_PER_SEC );
+		prnlog("\nStd:    %f\nOpt:    %f\n2s-Opt: %f\r\n----",diff1, diff2,diff3);
+
+	}
+
+	return errors;
 }
 
 
@@ -292,7 +367,7 @@ int testMAC()
 	uint8_t correct_MAC[4] = {0x1d,0x49,0xC9,0xDA};
 
 	uint8_t calculated_mac[4] = {0};
-    doMAC(cc_nr, 12,div_key, calculated_mac);
+	doReaderMAC(cc_nr, div_key, calculated_mac);
 
 	if(memcmp(calculated_mac, correct_MAC,4) == 0)
 	{

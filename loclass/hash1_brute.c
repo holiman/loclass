@@ -25,7 +25,7 @@ void calc_score(uint8_t* csn, uint8_t* k)
         if(k[i] < 16){
             goodvals[k[i]] = 1;
         }
-//        if(k[i] ==9 || k[i]==2){
+//        if(k[i] ==9 || k[i]==8){
 //            goodvals[k[i]] = 1;
 //        }
 
@@ -42,7 +42,7 @@ void calc_score(uint8_t* csn, uint8_t* k)
             score +=1;
         }
     }
-    if(score >=2 && badscore < 2)
+    if(score >=1 && badscore < 2)
     {
         printf("CSN\t%02x%02x%02x%02x%02x%02x%02x%02x\t%02x %02x %02x %02x %02x %02x %02x %02x\t"
                ,csn[0],csn[1],csn[2],csn[3],csn[4],csn[5],csn[6],csn[7]
@@ -60,12 +60,20 @@ void calc_score(uint8_t* csn, uint8_t* k)
 }
 
 void brute_hash1(){
-    uint8_t csn[8] = {0,0,0,0,0xf7,0xff,0x12,0xe0};
+    //uint8_t csn[8] = {0,0,0,0,0xf7,0xff,0x12,0xe0};
     uint8_t k[8]= {0,0,0,0,0,0,0,0};
     uint16_t a,b,c,d;
-    uint8_t testcsn[8] ={0x00,0x0d,0x0f,0xfd,0xf7,0xff,0x12,0xe0} ;
-    uint8_t testkey[8] ={0x05 ,0x01 ,0x00 ,0x10 ,0x45 ,0x08 ,0x45,0x56} ;
-    calc_score(testcsn,testkey);
+	//uint8_t testcsn[8] ={0x00,0x0d,0x0f,0xfd,0xf7,0xff,0x12,0xe0} ;
+    uint8_t csn[8] = {0x04,0x0f,0x0f,0xf7,0xf7,0xff,0x12,0xe0};
+	//uint8_t testkey2[8] = {0};
+    hash1(csn, k);
+    printf("CSN\t%02x%02x%02x%02x%02x%02x%02x%02x\t%02x %02x %02x %02x %02x %02x %02x %02x\t"
+               ,csn[0],csn[1],csn[2],csn[3],csn[4],csn[5],csn[6],csn[7]
+                ,k[0],k[1],k[2],k[3],k[4],k[5],k[6],k[7]
+                );
+
+	//uint8_t testkey[8] ={0x05 ,0x01 ,0x00 ,0x10 ,0x45 ,0x08 ,0x45,0x56} ;
+    calc_score(csn,k);
     printf("Brute forcing hashones\n");
     //exit(1);
     for(a=0;a < 256;a++)
