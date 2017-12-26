@@ -10,7 +10,7 @@ This implementation is not optimized at all, but is meant to serve as a referenc
 
 Written by Martin Holst Swende 2014
 
-Released as GPLV2. 
+Released as GPLV2 (or later). 
 
 # WARNING
 
